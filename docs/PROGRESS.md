@@ -13,7 +13,7 @@
 
 #### 1.1 環境建設
 
-- [ ] **1.1.1** `uv init` 初始化專案 + 目錄結構 + `project_constants.yaml`
+- [x] **1.1.1** `uv init` 初始化專案 + 目錄結構 + `project_constants.yaml`
   - 產出：`pyproject.toml`、`.python-version`（3.12）、完整目錄結構、`src/btc_predictor/strategies/base.py`
   - 執行：`uv init --name btc-predictor`，然後 `uv add` 核心依賴
 - [ ] **1.1.2** Binance REST API 歷史數據抓取
@@ -114,11 +114,10 @@
 
 _（Agent 完成任務後移到這裡，附日期和關鍵產出）_
 
-<!-- 範例：
-- [x] **1.1.1** 初始化 Git repo + 專案結構 (2025-02-12)
-  - 提交：`abc1234`
-  - 產出：目錄結構、`config/project_constants.yaml`、`strategies/base.py`
--->
+- [x] **1.1.1** 初始化專案結構與環境搭建 (2025-02-12)
+  - 產出：`pyproject.toml`, `.python-version`, `src/btc_predictor/`, `TA-Lib` (C Library + Python Wrapper)
+  - 環境：Python 3.12, uv, pandas, torch, xgboost, lightgbm, TA-Lib, shap, etc.
+
 
 ---
 
