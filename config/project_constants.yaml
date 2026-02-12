@@ -1,0 +1,46 @@
+# config/project_constants.yaml — 所有硬性決策，coding agent 不應自行變更
+
+runtime:
+  gpu: "NVIDIA < 8GB VRAM"
+  database: "SQLite"
+  language: "Python 3.12"
+  package_manager: "uv"
+  project_layout: "src (src/btc_predictor/)"
+  ml_framework: "PyTorch (優先)"
+  tech_indicators: "ta-lib (C binding)"
+
+event_contract:
+  timeframes: [10, 30, 60, 1440]       # 分鐘
+  payout_ratio:
+    10: 1.80
+    30: 1.85
+    60: 1.85
+    1440: 1.85
+  breakeven_winrate:
+    10: 0.5556
+    30: 0.5405
+    60: 0.5405
+    1440: 0.5405
+  min_bet: 5                            # USDT
+  direction: ["higher", "lower"]
+
+risk_control:
+  bet_sizing: "dynamic"
+  bet_range: [5, 20]                    # USDT
+  confidence_to_bet: "linear"           # 閾值→5, 1.0→20
+  daily_max_loss: 50                    # USDT
+  max_consecutive_losses: 8             # 連敗 N 筆暫停 1 小時
+  max_daily_trades: 30
+
+simulation:
+  trigger: "continuous"
+  min_trades_for_significance: 200
+
+confidence_thresholds:                  # breakeven_winrate + 5% 安全邊際
+  10: 0.606
+  30: 0.591
+  60: 0.591
+  1440: 0.591
+
+discord:
+  users: "self_only"
