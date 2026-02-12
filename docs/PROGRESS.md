@@ -3,7 +3,7 @@
 > ★ **Single Source of Truth** — Agent 每次完成任務後必須更新此文件。
 
 ## Current Phase: 1 — 模型選型與複製
-## Current Task: 1.1.1 — 專案結構初始化
+## Current Task: 1.2.1 — 特徵工程：OHLCV + RSI, MACD, BB, ATR
 
 ---
 
@@ -16,10 +16,10 @@
 - [x] **1.1.1** `uv init` 初始化專案 + 目錄結構 + `project_constants.yaml`
   - 產出：`pyproject.toml`、`.python-version`（3.12）、完整目錄結構、`src/btc_predictor/strategies/base.py`
   - 執行：`uv init --name btc-predictor`，然後 `uv add` 核心依賴
-- [ ] **1.1.2** Binance REST API 歷史數據抓取
+- [x] **1.1.2** Binance REST API 歷史數據抓取
   - 產出：`scripts/fetch_history.py`、`src/btc_predictor/data/store.py`
   - 驗收：BTCUSDT 1m/5m/1h/1d 數據寫入 SQLite，無缺漏
-- [ ] **1.1.3** SQLite schema 建立 + 讀寫工具
+- [x] **1.1.3** SQLite schema 建立 + 讀寫工具
   - 產出：`src/btc_predictor/data/store.py` 含 OHLCV 讀寫 + simulated_trades 表
   - 驗收：pytest 通過
 
@@ -117,6 +117,9 @@ _（Agent 完成任務後移到這裡，附日期和關鍵產出）_
 - [x] **1.1.1** 初始化專案結構與環境搭建 (2025-02-12)
   - 產出：`pyproject.toml`, `.python-version`, `src/btc_predictor/`, `TA-Lib` (C Library + Python Wrapper)
   - 環境：Python 3.12, uv, pandas, torch, xgboost, lightgbm, TA-Lib, shap, etc.
+- [x] **1.1.2 & 1.1.3** Binance 數據抓取與 SQLite 儲存層 (2025-02-12)
+  - 產出：`scripts/fetch_history.py`, `src/btc_predictor/data/store.py`, `tests/test_store.py`
+  - 成果：支援 BTCUSDT 1m/5m/1h/1d 歷史數據抓取並以 UPSERT 方式存入 SQLite。通過 pytest 驗證。
 
 
 ---
