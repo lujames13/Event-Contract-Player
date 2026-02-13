@@ -3,7 +3,10 @@ import pandas as pd
 import numpy as np
 import pickle
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
+
+from btc_predictor.strategies.xgboost_direction.features import generate_features, get_feature_columns
+from btc_predictor.data.labeling import add_direction_labels
 
 def train_model(
     X: pd.DataFrame, 
@@ -81,3 +84,71 @@ def load_model(path: str) -> xgb.XGBClassifier:
     """Load the model from a file."""
     with open(path, 'rb') as f:
         return pickle.load(f)
+
+class XGBoostDirectionModel:
+    """
+    Wrapper class for XGBoost direction prediction model.
+    Encapsulates feature generation, labeling, training, and prediction.
+    """
+    def __init__(self, model_path: Optional[str] = None):
+        self.model = None
+        if model_path:
+            self.load(model_path)
+            
+    def fit(self, ohlcv: pd.DataFrame, timeframe_minutes: int, params: Optional[Dict[str, Any]] = None) -> float:
+        """
+        Train the model and return training accuracy.
+        """
+        # 1. Generate features
+        feat_df = generate_features(ohlcv)
+        
+        # 2. Add labels
+        labeled_df = add_direction_labels(feat_df, timeframe_minutes)
+        
+        # 3. Clean NaN
+        feature_cols = get_feature_columns()
+        labeled_df = labeled_df.dropna(subset=["label"] + feature_cols)
+        
+        if labeled_df.empty:
+            raise ValueError("No valid training samples")
+            
+        # 4. Extract X and y
+        X = labeled_df[feature_cols]
+        y = labeled_df["label"]
+        
+        # 5. Train
+        self.model = train_model(X, y, params)
+        
+        # 6. Calculate accuracy
+        y_pred = self.model.predict(X)
+        accuracy = (y_pred == y).mean()
+        
+        return accuracy
+    
+    def predict_proba(self, ohlcv: pd.DataFrame) -> float:
+        """
+        Predict probability of price going higher based on the latest data point.
+        """
+        if self.model is None:
+            raise ValueError("Model not trained or loaded")
+            
+        # 1. Generate features
+        feat_df = generate_features(ohlcv)
+        
+        # 2. Get latest features
+        latest_features = feat_df.iloc[[-1]]
+        feature_cols = get_feature_columns()
+        X = latest_features[feature_cols]
+        
+        # 3. Predict
+        prob_higher = predict_higher_probability(self.model, X)[0]
+        
+        return float(prob_higher)
+        
+    def save(self, path: str):
+        if self.model is None:
+            raise ValueError("No model to save")
+        save_model(self.model, path)
+        
+    def load(self, path: str):
+        self.model = load_model(path)

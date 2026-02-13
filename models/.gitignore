@@ -1,0 +1,9 @@
+# 忽略所有 pickle 模型檔案
+*.pkl
+*.pickle
+
+# 保留 .gitignore 本身
+!.gitignore
+
+# 可選：保留 README
+!README.md
