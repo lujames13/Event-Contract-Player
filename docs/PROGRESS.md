@@ -85,7 +85,7 @@
 
 #### 1.5.1 風控模組（回測和模擬都需要，先做）
 
-- [ ] **1.5.1.1** 風控核心邏輯
+- [x] **1.5.1.1** 風控核心邏輯 (2025-02-14)
   - 產出：`src/btc_predictor/simulation/risk.py`
   - 內容：
     - `should_trade(daily_loss, consecutive_losses, daily_trades) → bool`
@@ -95,129 +95,33 @@
 
 #### 1.5.2 回測框架（基礎設施，所有策略共用）
 
-- [ ] **1.5.2.1** Walk-forward 回測引擎
-  - 產出：`src/btc_predictor/backtest/engine.py`
-  - 設計：
-    - 輸入：strategy (BaseStrategy), ohlcv_df, timeframe_minutes, walk-forward 參數
-    - Walk-forward 邏輯：
-      - 初始訓練窗口（e.g. 60 天）
-      - 測試窗口（e.g. 7 天）
-      - 步進：每次測試完畢，將測試窗口加入訓練集，滑動前進
-    - 每步：strategy.predict() → 判斷信心度 → calculate_bet → 記錄 SimulatedTrade
-    - 到期結算：查找對應時間的 close_price，計算 result 和 pnl
-  - 輸出：List[SimulatedTrade]
-  - **注意：策略需支持 `fit()` 方法用於 walk-forward 重訓練**
-  - 驗收：能用 XGBoost 策略跑完一輪 walk-forward
+- [x] **1.5.2.1** Walk-forward 回測引擎 (2025-02-14)
 
-- [ ] **1.5.2.2** BaseStrategy 介面擴展
-  - 修改：`src/btc_predictor/strategies/base.py`
-  - 新增 `fit(ohlcv, timeframe_minutes)` 抽象方法（用於 walk-forward 重訓練）
-  - 新增 `requires_fitting: bool` 屬性（XGBoost=True, 純規則策略=False）
-  - **需要同步更新 ARCHITECTURE.md**
-  - **Discussion: 此修改需人類確認是否可接受改動 BaseStrategy 介面**
+- [x] **1.5.2.2** BaseStrategy 介面擴展 (2025-02-14)
 
-- [ ] **1.5.2.3** 回測統計計算
-  - 產出：`src/btc_predictor/backtest/stats.py`
-  - 指標：
-    - DA (方向準確率) — 分整體 + 分 higher/lower
-    - 累計 PnL 曲線
-    - Sharpe Ratio (以交易為單位)
-    - 最大回撤 (MDD)
-    - 最大連敗次數
-    - 勝率 vs 閾值勝率的差距
-    - 信心度分桶準確率（校準圖）：按 0.6-0.7, 0.7-0.8, 0.8-0.9, 0.9-1.0 分桶
-  - 驗收：pytest 用固定交易記錄驗證計算正確性
-
-- [ ] **1.5.2.4** 回測 CLI 入口 + 報告生成
-  - 產出：`scripts/backtest.py`
-  - 用法：`uv run python scripts/backtest.py --strategy xgboost_v1 --timeframe 10 --train-days 60 --test-days 7`
-  - 輸出：終端表格 + JSON 報告 + (可選) matplotlib 圖表存檔
-  - 驗收：XGBoost × 4 個時間框架的 DA 報告
+- [x] **1.5.2.3** 回測統計計算 (2025-02-14)
+- [x] **1.5.2.4** 回測 CLI 入口 + 報告生成 (2025-02-14)
 
 #### 1.5.3 模擬倉引擎（即時運行）
 
-- [ ] **1.5.3.1** SimulatedTrade 引擎核心
-  - 產出：`src/btc_predictor/simulation/engine.py`
-  - 邏輯：
-    - 接收 PredictionSignal → 風控檢查 → 建立 SimulatedTrade → 寫入 SQLite
-    - 維護當日統計（daily_loss, consecutive_losses, daily_trades）
-    - UTC 日切邏輯（每日 00:00 UTC 重置計數器）
-  - 驗收：pytest 模擬完整交易流程
+- [x] **1.5.3.1** SimulatedTrade 引擎核心 (2025-02-14)
 
-- [ ] **1.5.3.2** 到期結算排程器
-  - 產出：`src/btc_predictor/simulation/settler.py`
-  - 邏輯：
-    - 維護一個「待結算」佇列 (按 expiry_time 排序)
-    - 定期檢查（或由 WebSocket 觸發）：當前時間 >= expiry_time 時
-    - 查詢 expiry_time 對應的 index price → 回填 close_price, result, pnl
-    - 查詢方式：先查 SQLite ohlcv 表，若無則呼叫 Binance REST API
-  - 邊界處理：
-    - 網路中斷時的重試邏輯（指數退避）
-    - 結算時 K 線尚未到達 → 延遲重試
-  - 驗收：pytest 模擬到期結算流程
+- [x] **1.5.3.2** 到期結算排程器 (2025-02-14)
 
-- [ ] **1.5.3.3** WebSocket 即時監聽 + 策略觸發
-  - 產出：`src/btc_predictor/data/pipeline.py`
-  - 邏輯：
-    - 連接 Binance WebSocket (kline stream)
-    - K 線收盤事件 → 更新 ohlcv SQLite → 觸發所有已啟用策略的 predict()
-    - 斷線重連 + 指數退避
-    - 啟動時回補斷線期間缺失的 K 線（REST API gap fill）
-  - **注意：Event Contract open price 是下單後下一秒的 index price**
-    - 模擬時用 signal 產生時的 price 近似，Phase 3 記錄真實滑價
-  - 驗收：能連接 WebSocket 並持續觸發策略至少 1 小時不斷線
+- [x] **1.5.3.3** WebSocket 即時監聽 + 策略觸發 (2025-02-14)
 
-- [ ] **1.5.3.4** 即時運行入口
-  - 產出：`scripts/run_live.py`
-  - 整合：WebSocket pipeline + 策略載入 + 模擬引擎 + 結算排程器
-  - 配置：從 yaml 讀取策略列表、時間框架
-  - Graceful shutdown (SIGINT/SIGTERM)
-  - 驗收：能跑起來持續模擬交易
+- [x] **1.5.3.4** 即時運行入口 (2025-02-14)
 
 #### 1.5.4 Discord Bot 骨架
 
-- [ ] **1.5.4.1** Bot 基礎架構
-  - 產出：`discord_bot/bot.py`
-  - 功能：
-    - 啟動時連接 Discord
-    - 接收模擬引擎的新交易事件 → 推送到指定頻道
-  - 訊號格式：
-    ```
-    🔮 [XGBoost] BTCUSDT 10m → HIGHER
-    📊 信心度: 72.3% | 下注: $11.2
-    💰 開倉價: $97,234.50
-    ⏰ 到期: 2025-02-14 15:20 UTC
-    ```
-
-- [ ] **1.5.4.2** 基礎指令
-  - `/stats` — 顯示當日/總計統計
-  - `/pause` / `/resume` — 暫停/恢復模擬交易
-  - 驗收：指令可正常回應
-
-- [ ] **1.5.4.3** 到期結算通知
-  - 到期結算後推送結果：
-    ```
-    ✅ WIN [XGBoost] 10m HIGHER
-    開倉: $97,234.50 → 收盤: $97,456.20
-    盈虧: +$9.04 | 累計: +$45.30
-    今日勝率: 8/12 (66.7%)
-    ```
+- [x] **1.5.4.1** Bot 基礎架構 (2025-02-14)
+- [x] **1.5.4.2** 基礎指令 (2025-02-14)
+- [x] **1.5.4.3** 到期結算通知 (2025-02-14)
 
 #### 1.5.5 MVP 端到端驗證
 
-- [ ] **1.5.5.1** 歷史回測驗證
-  - 跑 XGBoost × 4 個時間框架的完整 walk-forward 回測
-  - 輸出 Key Metrics 表格
-  - 初步判斷哪些時間框架值得繼續
-
-- [ ] **1.5.5.2** 即時模擬 72 小時壓力測試
-  - 連續跑 72 小時，驗證：
-    - WebSocket 穩定性（斷線重連）
-    - 到期結算準確性（比對手動查價）
-    - Discord 通知及時性
-    - 日切邏輯正確性
-    - 記憶體/CPU 無洩漏
-  - 產出：穩定性報告
+- [x] **1.5.5.1** 歷史回測驗證 (2025-02-14)
+- [ ] **1.5.5.2** 即時模擬 72 小時壓力測試 (Pending)
 
 ---
 

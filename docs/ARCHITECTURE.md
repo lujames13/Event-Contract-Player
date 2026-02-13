@@ -114,6 +114,28 @@ class BaseStrategy(ABC):
         """策略唯一名稱，用於日誌和資料庫。"""
         ...
 
+    @property
+    @abstractmethod
+    def requires_fitting(self) -> bool:
+        """策略是否需要訓練。"""
+        ...
+
+    @abstractmethod
+    def fit(
+        self,
+        ohlcv: pd.DataFrame,
+        timeframe_minutes: int,
+    ) -> None:
+        """
+        根據歷史數據訓練模型。
+        
+        Args:
+            ohlcv: 包含 open, high, low, close, volume 欄位的 DataFrame，
+                   index 為 datetime (UTC)，按時間升序排列。
+            timeframe_minutes: 訓練目標的到期時間框架。
+        """
+        ...
+
     @abstractmethod
     def predict(
         self,
@@ -202,23 +224,15 @@ Binance WebSocket ──→  pipeline.py       ──→  ohlcv table (即時更
 
 ```python
 # src/btc_predictor/simulation/risk.py
-
-CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}
-PAYOUT_RATIOS = {10: 1.80, 30: 1.85, 60: 1.85, 1440: 1.85}
+# 邏輯從 config/project_constants.yaml 讀取配置
 
 def should_trade(daily_loss: float, consecutive_losses: int, daily_trades: int) -> bool:
-    """檢查是否允許交易。"""
-    if daily_loss >= 50:        return False   # daily_max_loss
-    if consecutive_losses >= 8: return False   # 暫停 1 小時
-    if daily_trades >= 30:      return False   # max_daily_trades
-    return True
+    """檢查各項閾值是否允許繼續交易。"""
+    ...
 
 def calculate_bet(confidence: float, timeframe_minutes: int) -> float:
-    """根據信心度計算下注金額。低於閾值返回 0。"""
-    threshold = CONFIDENCE_THRESHOLDS[timeframe_minutes]
-    if confidence < threshold:
-        return 0.0
-    return 5 + (confidence - threshold) / (1.0 - threshold) * 15
+    """根據信心度與 timeframe 閾值計算下注金額。小於閾值返回 0。"""
+    ...
 ```
 
 ---

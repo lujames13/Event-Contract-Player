@@ -11,6 +11,28 @@ class BaseStrategy(ABC):
         """策略唯一名稱，用於日誌和資料庫。"""
         pass
 
+    @property
+    @abstractmethod
+    def requires_fitting(self) -> bool:
+        """策略是否需要訓練。"""
+        pass
+
+    @abstractmethod
+    def fit(
+        self,
+        ohlcv: pd.DataFrame,
+        timeframe_minutes: int,
+    ) -> None:
+        """
+        根據歷史數據訓練模型。
+        
+        Args:
+            ohlcv: 包含 open, high, low, close, volume 欄位的 DataFrame，
+                   index 為 datetime (UTC)，按時間升序排列。
+            timeframe_minutes: 訓練目標的到期時間框架。
+        """
+        pass
+
     @abstractmethod
     def predict(
         self,

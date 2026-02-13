@@ -1,7 +1,8 @@
 import sqlite3
 import pandas as pd
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
+from datetime import datetime
 
 class DataStore:
     def __init__(self, db_path: str = "data/btc_predictor.db"):
@@ -124,10 +125,84 @@ class DataStore:
         with self._get_connection() as conn:
             df = pd.read_sql_query(query, conn, params=params)
         
-        # Convert open_time to datetime index if desired, or keep as int
-        # For consistency with BaseStrategy, we might want to return datetime index
+        # Convert open_time to datetime index
         if not df.empty:
             df['datetime'] = pd.to_datetime(df['open_time'], unit='ms', utc=True)
             df.set_index('datetime', inplace=True)
             
         return df
+
+    def save_simulated_trade(self, trade: Any):
+        """Save a new simulated trade to the database."""
+        import json
+        with self._get_connection() as conn:
+            conn.execute("""
+                INSERT INTO simulated_trades (
+                    id, strategy_name, direction, confidence, timeframe_minutes,
+                    bet_amount, open_time, open_price, expiry_time, features_used
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                trade.id, trade.strategy_name, trade.direction, trade.confidence,
+                trade.timeframe_minutes, trade.bet_amount, 
+                trade.open_time.isoformat() if isinstance(trade.open_time, datetime) else trade.open_time,
+                trade.open_price,
+                trade.expiry_time.isoformat() if isinstance(trade.expiry_time, datetime) else trade.expiry_time,
+                json.dumps(getattr(trade, 'features_used', {}))
+            ))
+
+    def update_simulated_trade(self, trade_id: str, close_price: float, result: str, pnl: float):
+        """Update a trade with settlement results."""
+        with self._get_connection() as conn:
+            conn.execute("""
+                UPDATE simulated_trades 
+                SET close_price = ?, result = ?, pnl = ?
+                WHERE id = ?
+            """, (close_price, result, pnl, trade_id))
+
+    def get_daily_stats(self, strategy_name: str, date_str: str) -> dict:
+        """
+        Get daily statistics for risk control.
+        date_str should be YYYY-MM-DD (UTC).
+        """
+        query = """
+            SELECT 
+                SUM(CASE WHEN pnl < 0 THEN -pnl ELSE 0 END) as daily_loss,
+                COUNT(*) as daily_trades
+            FROM simulated_trades
+            WHERE strategy_name = ? AND open_time LIKE ?
+        """
+        
+        with self._get_connection() as conn:
+            row = conn.execute(query, (strategy_name, f"{date_str}%")).fetchone()
+            
+            # For consecutive losses, we need the recent trades
+            trades_query = """
+                SELECT result FROM simulated_trades
+                WHERE strategy_name = ? 
+                ORDER BY open_time DESC
+                LIMIT 20
+            """
+            recent_results = conn.execute(trades_query, (strategy_name,)).fetchall()
+            
+            consecutive_losses = 0
+            for (res,) in recent_results:
+                if res == 'lose':
+                    consecutive_losses += 1
+                elif res == 'win':
+                    break
+                else: # None (pending)
+                    continue
+            
+            return {
+                "daily_loss": row[0] if row[0] else 0.0,
+                "daily_trades": row[1] if row[1] else 0,
+                "consecutive_losses": consecutive_losses
+            }
+
+    def get_pending_trades(self) -> pd.DataFrame:
+        """Retrieve trades that need settlement (close_price IS NULL)."""
+        with self._get_connection() as conn:
+            return pd.read_sql_query("""
+                SELECT * FROM simulated_trades WHERE close_price IS NULL
+                ORDER BY expiry_time ASC
+            """, conn)

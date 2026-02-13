@@ -23,6 +23,10 @@ def generate_features(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
         df.index = pd.to_datetime(df.index)
         
+    # Optimization for backtesting: if features are already present, skip generation
+    if 'rsi_14' in df.columns and 'macd' in df.columns:
+        return df
+        
     feat = df.copy()
     
     # --- 1. Basic Returns & Volatility ---
