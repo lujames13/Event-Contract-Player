@@ -7,7 +7,7 @@
 > 避免在模型層投入大量時間後才發現基礎設施有設計缺陷。
 
 ## Current Phase: 1 — XGBoost 基線模型
-## Current Task: 1.2.1 — Label 生成邏輯
+## Current Task: 1.5.1.1 — 風控核心邏輯
 
 ---
 
@@ -34,7 +34,7 @@
 
 #### 1.2 XGBoost 方向分類
 
-- [ ] **1.2.1** ⭐ **Label 生成邏輯**
+- [x] **1.2.1** ⭐ **Label 生成邏輯** (2025-02-14)
   - 產出：`src/btc_predictor/data/labeling.py`
   - 核心：給定 open_time 和 timeframe_minutes，計算 label:
     - 從 OHLCV 中找到 `open_time` 的 close price 作為 open_price
@@ -47,7 +47,7 @@
   - 驗收：pytest 測試覆蓋正常情況 + 所有邊界情況
   - **Rationale：這是 Event Contract 最核心的差異點，所有模型和回測都依賴正確的 label**
 
-- [ ] **1.2.2** 特徵工程：OHLCV + 技術指標
+- [x] **1.2.2** 特徵工程：OHLCV + 技術指標 (2025-02-14)
   - 產出：`src/btc_predictor/strategies/xgboost_direction/features.py`
   - 特徵清單：
     - 基礎：returns (多週期)、log returns、volatility (rolling std)
@@ -58,7 +58,7 @@
   - 注意：所有特徵必須只用 t 時刻及之前的數據（嚴禁前視偏差）
   - 驗收：pytest 驗證特徵值合理性 + 無 NaN 洩漏 + 無前視偏差
 
-- [ ] **1.2.3** XGBoost 模型訓練邏輯
+- [x] **1.2.3** XGBoost 模型訓練邏輯 (2025-02-14)
   - 產出：`src/btc_predictor/strategies/xgboost_direction/model.py`
   - 內容：
     - `train(X, y, params)` → 返回訓練好的 model
@@ -68,7 +68,7 @@
     - 保存/載入 model 的序列化工具
   - 驗收：能在小數據集上跑通 train → predict 流程
 
-- [ ] **1.2.4** 統一輸出為 PredictionSignal
+- [x] **1.2.4** 統一輸出為 PredictionSignal (2025-02-14)
   - 產出：`src/btc_predictor/strategies/xgboost_direction/strategy.py`
   - 內容：繼承 BaseStrategy，串接 features → model → PredictionSignal
   - confidence = predict_proba 的輸出值
@@ -280,6 +280,13 @@
 - [x] **1.1.2 & 1.1.3** Binance 數據抓取與 SQLite 儲存層 (2025-02-12)
   - 產出：`scripts/fetch_history.py`, `src/btc_predictor/data/store.py`, `tests/test_store.py`
   - 成果：支援 BTCUSDT 1m/5m/1h/1d 歷史數據抓取並以 UPSERT 方式存入 SQLite。通過 pytest 驗證。
+- [x] **1.2** XGBoost 基線模型建立 (2025-02-14)
+  - 產出：`src/btc_predictor/data/labeling.py`, `src/btc_predictor/strategies/xgboost_direction/`
+  - 成果：
+    - **1.2.1**: Label 生成邏輯，處理平盤與數據缺失。
+    - **1.2.2**: 特徵工程，包含 OHLCV、技術指標與時間編碼。
+    - **1.2.3**: XGBoost 模型訓練、早期停止與序列化工具。
+    - **1.2.4**: 整合至 `XGBoostDirectionStrategy` 並統一輸出為 `PredictionSignal`。
 
 ---
 
