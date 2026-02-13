@@ -9,7 +9,7 @@ from btc_predictor.data.pipeline import DataPipeline
 from btc_predictor.simulation.settler import settle_pending_trades
 from btc_predictor.strategies.xgboost_direction.strategy import XGBoostDirectionStrategy
 from btc_predictor.utils.config import load_constants
-from discord_bot.bot import EventContractBot
+from btc_predictor.discord_bot.bot import EventContractBot
 
 async def settler_loop(store: DataStore, client: Client, bot: EventContractBot = None):
     """
@@ -36,11 +36,14 @@ async def main():
     # 2. Setup Discord Bot if token available
     bot = None
     if discord_token and discord_channel_id:
-        bot = EventContractBot(int(discord_channel_id))
+        guild_id = os.getenv("DISCORD_GUILD_ID")
+        bot = EventContractBot(
+            channel_id=int(discord_channel_id),
+            guild_id=int(guild_id) if guild_id else None
+        )
         bot.store = store
-        await bot.login(discord_token)
-        asyncio.create_task(bot.connect())
-        print("Discord Bot connected.")
+        asyncio.create_task(bot.start(discord_token))
+        print(f"Discord Bot task started. (Guild sync: {'Yes' if guild_id else 'Global'})")
     
     # 3. Setup Binance Clients
     client = Client(api_key, api_secret)
