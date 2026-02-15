@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--output", type=str, default="reports", help="Output directory for reports")
     parser.add_argument("--start-date", type=str, help="Backtest start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", type=str, help="Backtest end date (YYYY-MM-DD)")
+    parser.add_argument("--n-jobs", type=int, default=-2, help="Parallel jobs (-1: all, -2: all-1)")
     
     args = parser.parse_args()
     
@@ -75,7 +76,8 @@ def main():
         df,
         timeframe_minutes=args.timeframe,
         train_days=args.train_days,
-        test_days=args.test_days
+        test_days=args.test_days,
+        n_jobs=args.n_jobs
     )
     
     if not trades:
@@ -83,7 +85,7 @@ def main():
         return
         
     # 4. Calculate Stats
-    stats = calculate_backtest_stats(trades)
+    stats = calculate_backtest_stats(trades, test_days=args.test_days)
     
     # 5. Output Report
     print("\n" + "="*40)

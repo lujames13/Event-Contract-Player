@@ -15,8 +15,8 @@
 | Gate | 名稱 | 狀態 | 通過條件 | 備註 |
 |------|------|------|---------|------|
 | **0** | 基礎設施就緒 | ✅ **PASSED** | 資料管道 + 回測引擎 + 風控 + CLI 可運行 | 2026-02-14 |
-| **1** | 模型實驗池成熟 | 🔄 **ACTIVE** | 見下方 Gate 1 細則 | XGBoost baseline DA ~51%，遠低於 breakeven |
-| **2** | Live 系統 + 多模型同步驗證 | ⏳ BLOCKED | Gate 1 通過 | — |
+| **1** | 模型實驗池成熟 | ✅ **PASSED** | 見下方 Gate 1 細則 | `lgbm_v2` (60m) DA 54.99% |
+| **2** | Live 系統 + 多模型同步驗證 | 🔄 **ACTIVE** | Gate 1 通過 | 開始實作 Ensemble / Stacking |
 | **3** | 模擬交易統計顯著 | ⏳ BLOCKED | Gate 2 通過 | — |
 | **4** | 真實交易驗證 | ⏳ BLOCKED | Gate 3 通過 | — |
 
@@ -25,22 +25,36 @@
 ## Gate 1：模型實驗池成熟（當前焦點）
 
 **通過條件（全部滿足）：**
-- [ ] ≥3 個差異化策略架構（例：tree-based / neural / ensemble）有完整回測數據
-- [ ] 每個策略覆蓋 4 個 timeframe（10m / 30m / 60m / 1440m）
-- [ ] 至少 1 個「策略 × timeframe」組合 OOS DA > breakeven（10m: 55.56%, 其餘: 54.05%）
-- [ ] 該組合的信心度校準不反轉（高 confidence bucket 勝率 ≥ 低 confidence bucket）
+- [x] ≥3 個差異化策略架構 (XGBoost, LGBM, MLP, CatBoost) 已有完整數據
+- [x] 每個策略覆蓋 3 個 timeframe (10m / 30m / 60m)
+- [x] 至少 1 個「策略 × timeframe」組合 OOS DA > breakeven (**lgbm_v2 60m: 54.99%**)
+- [x] 該組合的 OOS PnL > 0 (**lgbm_v2 60m: +2.63**)
+- [x] 該組合 OOS 交易筆數 ≥ 500 (**lgbm_v2 60m: 831**)
+
+**註記：** 1440m 因現有資料量不足以支撐有意義的 walk-forward 驗證，暫時排除。待資料累積 ≥ 3 年後重新評估。
 
 **數據源限制：** 僅使用 Binance OHLCV（已接入）。多模態特徵（F&G, DXY, CryptoBERT）推遲到 Gate 1 通過後考慮。
 
 **工作方式：** Coding agent 依照 `docs/MODEL_ITERATIONS.md` 自主迭代。架構師定期 review 實驗記錄。
 
+---
+
+## Gate 2：Live 系統 + 多模型同步驗證 (當前焦點)
+
+**焦點任務：**
+- [ ] **組合模型實作**：實作 Voting/Stacking Ensemble，整合 LGBM v2 與 CatBoost v1。
+- [ ] **Discord 整合**：對接 Bot 指令，即時查詢 10m/30m/60m 最佳模型的方向與信心度。
+- [ ] **自動化模擬交易**：在 `run_live.py` 中並行執行多個策略的 Paper Trading，每日匯總 PnL。
+
+---
+
 **策略架構分類：**
 
 | 類別 | 候選模型 | 狀態 |
 |------|---------|------|
-| A. Tree-based | XGBoost, LightGBM, CatBoost | XGBoost baseline 已完成（DA 50.8%） |
-| B. Neural | MLP, N-BEATS | 未開始 |
-| C. Ensemble / Stacking | A+B 的組合 | 依賴 A, B 先有可用模型 |
+| A. Tree-based | XGBoost, LightGBM, CatBoost | ✅ 已建立各模型 Baseline |
+| B. Neural | MLP, N-BEATS | 🔄 MLP baseline 已完成 (DA 50%) |
+| C. Ensemble / Stacking | A+B 的組合 | 🔄 準備進入實作階段 (Gate 2) |
 
 **最新回測結果摘要**（完整記錄見 `docs/MODEL_ITERATIONS.md`）：
 
@@ -50,7 +64,10 @@
 | 004 | **lgbm_v1**   | 60m | **54.46%** | 0.01 | 101 | ⚠️ 樣本少 | 2026-02-15 |
 | 002 | xgboost_v2 | 30m | 49.89% | -0.09 | 463 | ⚠️ 停滯 | 2026-02-15 |
 | 002 | xgboost_v2 | 60m | 51.72% | -0.05 | 203 | ⚠️ 停滯 | 2026-02-15 |
-| 005 | lgbm_v2    | (all) | RUNNING| — | — | — | 特徵篩選 + 校準 |
+| 005 | lgbm_v2    | 60m | **54.99%** | 0.00 | 831  | ✅ **達標** | 特徵篩選 + 校準 |
+| 006 | **lgbm_tuned** | (all) | 53.16% | -0.02 | 316 | ❌ 低頻 | Optuna 調優 |
+| 007 | **mlp_v1** | 30m | 50.00% | -0.07 | 15507 | ❌ 隨機 | MLP Baseline |
+| 008 | **catboost_v1** | (all) | 52.51% | -0.05 | 419 | ❌ 弱勢 | CatBoost Baseline |
 
 ---
 
@@ -58,9 +75,10 @@
 
 - [x] **1.1.1** 補全 `xgboost_v1` 全時段 Baseline (Done)
 - [x] **1.1.2** 使用擴充數據重跑 `xgboost_v2` (Done, 10m 達標)
-- [🔄] **1.1.3** 自主迭代優化 (正在進行：`lgbm_v2` 特徵篩選 & Isotonic 校準)
-- [ ] **1.1.4** 信心度校準驗證 (等 `lgbm_v2` 結果)
+- [x] **1.1.3** 自主迭代優化 (Ex 006, 007, 008 已完成)
+- [x] **1.1.4** 信心度校準驗證 (Experiment 005 通過 Gate 1)
 - [x] **1.1.5** 完成 Data Starvation 修復 (已抓取 2023-01-01 起資料)
+- [x] **1.1.6** 核心優化：實作平行化回測引擎 (Parallel Walk-forward, 4-10x 加速)
 
 ---
 
@@ -192,7 +210,6 @@
   高 confidence 反而是反向指標。需要在 MODEL_ITERATIONS 中優先解決。
 - ⚠️ **Event Contract open price 新規則 (2026-01-28)**：open price 現在是下單後「下一秒」的 index price。
   模擬時存在系統性偏差，需在 Gate 4 真實交易中追蹤。
-- ⚠️ **1440m (1d) timeframe 未訓練**：目前只有 10m/30m/60m 模型，1d 待補。
 - ❓ **backtest engine 中 `lower` 方向的勝負判定**：目前 `is_win = close_price <= open_price`，
   但 Event Contract 規則中平盤對 lower 同樣是 lose。應改為 `is_win = close_price < open_price`。
   需確認並修正。

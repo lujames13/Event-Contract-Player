@@ -6,8 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "boruta>=0.4.3",
+    "catboost>=1.2.8",
     "discord-py>=2.6.4",
     "lightgbm>=4.6.0",
+    "optuna>=4.7.0",
     "pandas>=3.0.0",
     "python-binance>=1.0.34",
     "python-dotenv>=1.2.1",

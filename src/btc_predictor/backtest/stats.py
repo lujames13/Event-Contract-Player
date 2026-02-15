@@ -3,14 +3,21 @@ import numpy as np
 from typing import List, Dict, Any
 from btc_predictor.models import SimulatedTrade
 
-def calculate_backtest_stats(trades: List[SimulatedTrade]) -> Dict[str, Any]:
+def calculate_backtest_stats(trades: List[SimulatedTrade], test_days: int = 7) -> Dict[str, Any]:
     """
     Calculate various statistics from a list of simulated trades.
     """
     if not trades:
         return {}
         
-    df = pd.DataFrame([vars(t) for t in trades])
+    # Handle both SimulatedTrade objects and dicts
+    if isinstance(trades[0], dict):
+        df = pd.DataFrame(trades)
+    else:
+        df = pd.DataFrame([vars(t) for t in trades])
+    # Ensure open_time is datetime
+    if not pd.api.types.is_datetime64_any_dtype(df['open_time']):
+        df['open_time'] = pd.to_datetime(df['open_time'])
     
     # 1. Total Accuracy (DA)
     df['is_win'] = df['result'] == 'win'
@@ -31,9 +38,6 @@ def calculate_backtest_stats(trades: List[SimulatedTrade]) -> Dict[str, Any]:
     
     # 4. Sharpe Ratio (Trade-based)
     pnl_std = df['pnl'].std()
-    # Simple Sharpe: mean_pnl / std_pnl (not annualized, just per trade risk-adjusted return)
-    # Usually people multiply by sqrt(N) to estimate "annualized" but here we just need a metric.
-    # The requirement says "Sharpe Ratio (以交易為單位)"
     sharpe = (df['pnl'].mean() / pnl_std) if pnl_std > 0 else 0.0
     
     # 5. Max Consecutive Losses
@@ -45,13 +49,22 @@ def calculate_backtest_stats(trades: List[SimulatedTrade]) -> Dict[str, Any]:
     buckets = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     df['conf_bucket'] = pd.cut(df['confidence'], bins=buckets)
     calibration = df.groupby('conf_bucket', observed=False)['is_win'].agg(['mean', 'count']).to_dict('index')
-    
-    # Clean up calibration dict keys (Interval objects to strings)
     calibration = {str(k): v for k, v in calibration.items()}
+
+    # 7. Inverted DA
+    inverted_da = 1.0 - total_da
+    
+    # 8. Per-fold DA
+    min_time = df['open_time'].min()
+    # Group by test_days window
+    df['fold'] = ((df['open_time'] - min_time).dt.total_seconds() // (test_days * 24 * 3600)).astype(int)
+    per_fold_da = df.groupby('fold')['is_win'].mean().tolist()
     
     return {
         "total_trades": len(df),
         "total_da": float(total_da),
+        "inverted_da": float(inverted_da),
+        "per_fold_da": [float(x) for x in per_fold_da],
         "higher_da": float(higher_da),
         "lower_da": float(lower_da),
         "total_pnl": float(total_pnl),

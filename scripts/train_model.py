@@ -25,7 +25,7 @@ def train_strategy(strategy: BaseStrategy, timeframe: int, store: DataStore):
     # Load data (60 days)
     # Ideally should be configurable or strategy-dependent logic?
     # Task spec says: 60 days of 1 min data
-    days = 60
+    days = 180
     limit = days * 24 * 60
     
     # We load latest data
