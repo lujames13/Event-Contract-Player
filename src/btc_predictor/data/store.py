@@ -132,6 +132,29 @@ class DataStore:
             
         return df
 
+    def get_latest_ohlcv(
+        self, 
+        symbol: str, 
+        interval: str, 
+        limit: int
+    ) -> pd.DataFrame:
+        """
+        Retrieve LATEST OHLCV data from database.
+        """
+        query = "SELECT * FROM ohlcv WHERE symbol = ? AND interval = ? ORDER BY open_time DESC LIMIT ?"
+        params = [symbol, interval, limit]
+
+        with self._get_connection() as conn:
+            df = pd.read_sql_query(query, conn, params=params)
+        
+        # Convert open_time to datetime index and reverse to ASC
+        if not df.empty:
+            df['datetime'] = pd.to_datetime(df['open_time'], unit='ms', utc=True)
+            df.set_index('datetime', inplace=True)
+            df.sort_index(inplace=True)
+            
+        return df
+
     def save_simulated_trade(self, trade: Any):
         """Save a new simulated trade to the database."""
         import json

@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "boruta>=0.4.3",
     "discord-py>=2.6.4",
     "lightgbm>=4.6.0",
     "pandas>=3.0.0",

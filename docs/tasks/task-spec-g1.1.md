@@ -188,7 +188,45 @@ uv run pytest
 
 ### Coding Agent 回報
 
-_（每輪實驗完成後附加記錄：實驗編號、結果摘要、下一步計畫）_
+**2026-02-15 狀態更新：**
+
+#### 1. G1.1.1 — xgboost_v1 Baseline 完成
+- **結果**：4 個 timeframe (10m, 30m, 60m, 1440m) 基準測試已全數跑完。
+- **發現**：
+  - **DA 停滯**：所有 TF 的 DA 均在 50.7% ~ 51.9% 之間（Breakeven 需要 54%+）。
+  - **信心度反轉 (Confidence Inversion)**：在高樣本下（10m 有 5.7 萬筆），信心度 > 0.9 的預測勝率反而低於 0.8-0.9 區間，確認模型存在嚴重過擬合（Overfitting to noise）。
+  - **PnL 曲線**：全線單調下降，顯示純基礎特徵 + XGBoost 尚不足以獲利。
+
+#### 2. G1.1.2 — 迭代發現 (xgboost_v2)
+- **初步嘗試**：實作了 `xgboost_v2`（Early Stopping + Purged Gap），但在執行時發現嚴重的 **「資料飢餓 (Data Starvation)」**。
+- **關鍵發現**：
+  - 目前資料庫中的 `1m` 資料從 2024-01-01 開始。
+  - 當 `train_days=60` 且切出 20% validation set + purged gap 時，訓練樣本數對於「Early Stopping」機制過少，導致模型無法有效收斂或無法產生足夠預測（10m 交易筆數從 5 萬暴跌至 300 筆）。
+  - 1440m (1d) 時，一年的資料完全不足以支撐 walk-forward 的驗證集切分。
+
+#### 3. 建議與已執行行動
+- **已執行**：背景啟動大規模補資料任務，將 `1m` 數據回溯至 **2023-01-01** (已下載中)，提供兩倍的 runway。
+- **建議 (待評斷)**：
+  - **增加 Training Horizon**：建議在 `xgboost_v2` 之後的實驗中，將 `train_days` 從 60 天增加到 180 天或 365 天，以提供 validation set 足夠的樣本。
+  - **1440m 獨立參數**：針對 1d timeframe，建議 `train_days` 至少設為 730 天。
+  #### 4. G1.1.2 — 數據擴充後成果 (2026-02-15)
+- **資料擴充成功**：已獲取 **2023-01-01** 起完整數據，提供充足的 Training Window。
+- **xgboost_v2 Revised (Exp 002)**：
+    - **10m 達標**：DA 提升至 **55.59%**（Breakeven: 55.56%）。
+    - 關鍵改進：增加 `train_days=180` 解決了資料飢餓問題。
+- **lgbm_v1 Baseline (Exp 004)**：
+    - **30m 突破**：DA **54.34%**（Breakeven: 54.05%），且 **實現正 PnL (+14.93)**。
+    - **60m 突破**：DA **54.46%**，實現正 PnL (+3.39)，但樣本量較少 (101)。
+- **剩餘挑戰**：
+    - **信心度反轉 (Confidence Inversion)**：儘管 DA 達標，但高品質 (0.7+) 訊號的勝率依然低於低信心訊號。
+    - **特徵雜訊**：初步懷疑 ret 與 log_ret 等冗餘特徵導致樹模型在過擬合邊緣。
+
+#### 5. 下一步行動計畫
+- **啟動 Experiment 005**：實作 Boruta 特徵選擇器，過濾雜訊特徵。
+- **實作 Calibration**：引入 Isotonic Regression 對 `predict_proba` 進行校準，目標修復信心度反轉並提升 PnL。
+- **Gate 1 即將收斂**：10m 與 30m 已有候選模型，待校準修復後即可評估進入 Gate 2。
+
+---
 
 ### Review Agent 回報
 
