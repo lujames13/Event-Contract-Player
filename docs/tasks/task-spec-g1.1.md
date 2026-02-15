@@ -221,10 +221,18 @@ uv run pytest
     - **信心度反轉 (Confidence Inversion)**：儘管 DA 達標，但高品質 (0.7+) 訊號的勝率依然低於低信心訊號。
     - **特徵雜訊**：初步懷疑 ret 與 log_ret 等冗餘特徵導致樹模型在過擬合邊緣。
 
-#### 5. 下一步行動計畫
-- **啟動 Experiment 005**：實作 Boruta 特徵選擇器，過濾雜訊特徵。
-- **實作 Calibration**：引入 Isotonic Regression 對 `predict_proba` 進行校準，目標修復信心度反轉並提升 PnL。
-- **Gate 1 即將收斂**：10m 與 30m 已有候選模型，待校準修復後即可評估進入 Gate 2。
+#### 5. G1.1.2 — Experiment 005 (Feature Selection & Calibration) 初步完成
+- **策略**：`lgbm_v2` (Feature Selection Top 20 + Isotonic Calibration)
+- **初步結果 (30m)**：
+    - **OOS DA**: 52.34%（低於 v1 的 54.34%）。
+    - **校準效果**：成功改變了信心度分佈，大部分集中在 (0.6, 0.7] 區間。
+    - **發現**：存在嚴重的方向性偏倚（Lower DA 高達 75%），且短樣本 (107 筆) 統計顯著性不足。
+- **分析**：Isotonic Regression 在處理不平衡預測時可能導致方向性偏倚。目前正在評估是否需要切換至更穩定（如 Platt Scaling）或在全量數據上重新校準。
+
+#### 6. 下一步行動計畫
+- **長時段評估**：針對 `lgbm_v2` 跑完整 1 年回測，確認 DA 穩定性與方向性偏倚是否持續。
+- **校準方法比較**：比較 Platt Scaling 與 Isotonic Regression 在樣本不足時的魯棒性。
+- **修復回測 Engine Bug**：針對架構師提到的 `lower` 方向勝負判定 bug 進行修正（`is_win = close_price < open_price`），並重跑所有實驗以確保基準一致。
 
 ---
 
