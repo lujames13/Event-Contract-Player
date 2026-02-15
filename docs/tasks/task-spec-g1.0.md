@@ -515,4 +515,23 @@ grep "Discord Bot 指令介面" docs/ARCHITECTURE.md
 
 ### Review Agent 回報
 
-_（Review 後填寫：發現的問題、建議修改）_
+**狀態：** ✅ 通過 Review (2026-02-15)
+
+**1. 查核項目：**
+- [x] **G1.0.1 (ARCHITECTURE.md):** 系統總覽圖已更新，Registry 與 Discord Bot 段落已補上。
+- [x] **G1.0.2 (Bug Fix):** `engine.py` 中的平盤判定邏輯已從 `<=` 改為 `<`，符合 Event Contract 規則。
+- [x] **G1.0.3 (Registry):** `registry.py` 實作正確，支援自動發現與動態載入。
+- [x] **G1.0.4 (Refactor):** `xgboost_direction` 已完全更名為 `xgboost_v1`，目錄結構與模型路徑遷移完成。
+- [x] **G1.0.5 (Train Script):** `train_model.py` 可正常運行，支援多 timeframe。
+- [x] **G1.0.6 (Backtest CLI):** `backtest.py` 已整合 Registry，移除 hardcoded 初始化。
+
+**2. 驗證細節：**
+- 執行 `uv run pytest`：29 測項全數通過，包含新增的 `test_backtest_flat.py`。
+- 執行 `grep`：確認無舊名稱殘留。
+- 執行 `train_model.py`：成功產出 `models/xgboost_v1/10m.pkl`。
+- 執行 `backtest.py`：成功完成 walk-forward 回測並產出 JSON report。
+
+**3. 發現與建議：**
+- **PYTHONPATH 注意事項：** 在開發環境運行時，需確保 `src` 在 `PYTHONPATH` 中。目前的 script 內已有 `sys.path.append` 處理，但在執行 pytest 時需顯式指定 `PYTHONPATH=src`。
+- **Registry typo：** `registry.py:47` 的 log 訊息有小 typo (`strategies.py` 應為 `strategy.py`)，不影響功能。
+- **整體品質：** 代碼重構乾淨，符合 `code-style-guide.md` 要求。
