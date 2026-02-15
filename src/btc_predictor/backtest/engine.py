@@ -47,8 +47,9 @@ def run_backtest(
         if current_test_end > end_time:
             current_test_end = end_time
             
-        # 1. Prepare training data
-        train_data = ohlcv[ohlcv.index < current_test_start]
+        # 1. Prepare training data (sliding window of train_days)
+        train_start = current_test_start - timedelta(days=train_days)
+        train_data = ohlcv[(ohlcv.index >= train_start) & (ohlcv.index < current_test_start)]
         
         # 2. Fit strategy if needed
         if strategy.requires_fitting:
@@ -61,9 +62,13 @@ def run_backtest(
         # We simulate non-overlapping trades by stepping by timeframe_minutes.
         test_timestamps = test_data_window.index[::timeframe_minutes]
         
-        for ts in test_timestamps:
-            # Get data up to ts for prediction (avoid look-ahead)
-            data_up_to_ts = ohlcv[ohlcv.index <= ts]
+        for i, ts in enumerate(test_timestamps):
+            if i % 10 == 0:
+                print(".", end="", flush=True)
+            # Optimization: Slice only recent history (e.g. 7 days) to avoid copying full DataFrame
+            # Boolean indexing or full slicing is O(N) copy.
+            lookback_start = ts - timedelta(days=7)
+            data_up_to_ts = ohlcv.loc[lookback_start:ts]
             
             signal = strategy.predict(data_up_to_ts, timeframe_minutes)
             

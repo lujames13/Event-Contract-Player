@@ -1,0 +1,143 @@
+{
+    "stats": {
+        "total_trades": 7,
+        "total_da": 0.14285714285714285,
+        "higher_da": 0.16666666666666666,
+        "lower_da": 0.0,
+        "total_pnl": -29.363,
+        "mdd": 35.16,
+        "sharpe": -0.9401235001832983,
+        "max_consecutive_losses": 6,
+        "calibration": {
+            "(0.5, 0.6]": {
+                "mean": 0.0,
+                "count": 3
+            },
+            "(0.6, 0.7]": {
+                "mean": 0.25,
+                "count": 4
+            },
+            "(0.7, 0.8]": {
+                "mean": NaN,
+                "count": 0
+            },
+            "(0.8, 0.9]": {
+                "mean": NaN,
+                "count": 0
+            },
+            "(0.9, 1.0]": {
+                "mean": NaN,
+                "count": 0
+            }
+        },
+        "cumulative_pnl": [
+            5.797000000000001,
+            -0.35299999999999976,
+            -5.643,
+            -10.933,
+            -17.983,
+            -24.293,
+            -29.363
+        ]
+    },
+    "trades": [
+        {
+            "id": "a536e31d-af89-402a-8a96-08655a68a6c6",
+            "strategy_name": "xgboost_v2",
+            "direction": "higher",
+            "confidence": 0.6406277418136597,
+            "timeframe_minutes": 1440,
+            "bet_amount": 6.82,
+            "open_time": "2025-02-18 16:00:00+00:00",
+            "open_price": 95511.59,
+            "expiry_time": "2025-02-19 16:00:00+00:00",
+            "close_price": 96048.0,
+            "result": "win",
+            "pnl": 5.797000000000001
+        },
+        {
+            "id": "1ee2138c-5207-411c-9fe1-1591287d2d8c",
+            "strategy_name": "xgboost_v2",
+            "direction": "higher",
+            "confidence": 0.6222951412200928,
+            "timeframe_minutes": 1440,
+            "bet_amount": 6.15,
+            "open_time": "2025-02-21 16:00:00+00:00",
+            "open_price": 98104.6,
+            "expiry_time": "2025-02-22 16:00:00+00:00",
+            "close_price": 96698.69,
+            "result": "lose",
+            "pnl": -6.15
+        },
+        {
+            "id": "850fb74f-724f-4231-a2f2-d073f359820b",
+            "strategy_name": "xgboost_v2",
+            "direction": "higher",
+            "confidence": 0.5989380478858948,
+            "timeframe_minutes": 1440,
+            "bet_amount": 5.29,
+            "open_time": "2025-02-22 16:00:00+00:00",
+            "open_price": 96698.69,
+            "expiry_time": "2025-02-23 16:00:00+00:00",
+            "close_price": 95465.99,
+            "result": "lose",
+            "pnl": -5.29
+        },
+        {
+            "id": "f23e9f38-acd4-4eac-8302-082402312b39",
+            "strategy_name": "xgboost_v2",
+            "direction": "higher",
+            "confidence": 0.5989380478858948,
+            "timeframe_minutes": 1440,
+            "bet_amount": 5.29,
+            "open_time": "2025-02-23 16:00:00+00:00",
+            "open_price": 95465.99,
+            "expiry_time": "2025-02-24 16:00:00+00:00",
+            "close_price": 94243.98,
+            "result": "lose",
+            "pnl": -5.29
+        },
+        {
+            "id": "6cf0b1b0-df6c-4265-a38c-dde3201c26a1",
+            "strategy_name": "xgboost_v2",
+            "direction": "higher",
+            "confidence": 0.6469980478286743,
+            "timeframe_minutes": 1440,
+            "bet_amount": 7.05,
+            "open_time": "2025-02-24 16:00:00+00:00",
+            "open_price": 94243.98,
+            "expiry_time": "2025-02-25 16:00:00+00:00",
+            "close_price": 87246.0,
+            "result": "lose",
+            "pnl": -7.05
+        },
+        {
+            "id": "cb020a17-f63a-4dd4-a518-7081ff51e832",
+            "strategy_name": "xgboost_v2",
+            "direction": "higher",
+            "confidence": 0.6266581416130066,
+            "timeframe_minutes": 1440,
+            "bet_amount": 6.31,
+            "open_time": "2025-05-18 16:00:00+00:00",
+            "open_price": 105644.59,
+            "expiry_time": "2025-05-19 16:00:00+00:00",
+            "close_price": 104853.56,
+            "result": "lose",
+            "pnl": -6.31
+        },
+        {
+            "id": "876948f7-8184-4798-b0b0-e1a464d8a5b4",
+            "strategy_name": "xgboost_v2",
+            "direction": "lower",
+            "confidence": 0.5929939150810242,
+            "timeframe_minutes": 1440,
+            "bet_amount": 5.07,
+            "open_time": "2025-12-24 16:00:00+00:00",
+            "open_price": 86979.74,
+            "expiry_time": "2025-12-25 16:00:00+00:00",
+            "close_price": 88430.31,
+            "result": "lose",
+            "pnl": -5.07
+        }
+    ]
+}

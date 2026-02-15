@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--interval", type=str, default="1m", help="Data interval (1m, 5m, etc.)")
     parser.add_argument("--output", type=str, default="reports", help="Output directory for reports")
     parser.add_argument("--start-date", type=str, help="Backtest start date (YYYY-MM-DD)")
+    parser.add_argument("--end-date", type=str, help="Backtest end date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
@@ -39,8 +40,13 @@ def main():
         # Subtract train_days to have enough data for the first training
         start_dt = datetime.strptime(args.start_date, "%Y-%m-%d") - timedelta(days=args.train_days)
         start_ms = int(start_dt.timestamp() * 1000)
+    
+    end_ms = None
+    if args.end_date:
+        end_dt = datetime.strptime(args.end_date, "%Y-%m-%d")
+        end_ms = int(end_dt.timestamp() * 1000)
         
-    df = store.get_ohlcv(args.symbol, args.interval, start_time=start_ms)
+    df = store.get_ohlcv(args.symbol, args.interval, start_time=start_ms, end_time=end_ms)
     
     if df.empty:
         print(f"No data found for {args.symbol} {args.interval} in database.")
@@ -101,8 +107,14 @@ def main():
     report_filename = f"backtest_{args.strategy}_{args.timeframe}m_{timestamp}.json"
     report_path = output_dir / report_filename
     
+    # Include raw trades for merging later if needed
+    full_output = {
+        "stats": stats,
+        "trades": [vars(t) for t in trades]
+    }
+    
     with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(stats, f, indent=4)
+        json.dump(full_output, f, indent=4, default=str)
         
     print(f"Report saved to {report_path}")
 

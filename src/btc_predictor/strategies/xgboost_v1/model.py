@@ -32,7 +32,7 @@ def train_model(
         'learning_rate': 0.05,
         'objective': 'binary:logistic',
         'random_state': 42,
-        'n_jobs': -1,
+        'n_jobs': 1,
         'eval_metric': 'logloss'
     }
     
