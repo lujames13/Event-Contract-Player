@@ -3,11 +3,19 @@ import pandas as pd
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+import sys
+
+# Add src to sys.path to allow imports from btc_predictor
+sys.path.append(str(Path(__file__).parent.parent / "src"))
+
 from btc_predictor.data.store import DataStore
 from btc_predictor.backtest.engine import run_backtest
 from btc_predictor.backtest.stats import calculate_backtest_stats
-from btc_predictor.strategies.xgboost_direction.strategy import XGBoostDirectionStrategy
-from btc_predictor.strategies.xgboost_direction.features import generate_features
+# from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy (Removed)
+from btc_predictor.strategies.xgboost_v1.features import generate_features
+from btc_predictor.strategies.registry import StrategyRegistry
+STRATEGIES_DIR = "src/btc_predictor/strategies"
+MODELS_DIR = "models"
 
 def main():
     parser = argparse.ArgumentParser(description="BTC Predictor Backtest CLI")
@@ -45,10 +53,13 @@ def main():
     df = generate_features(df)
     
     # 2. Initialize Strategy
-    if args.strategy == "xgboost_v1":
-        strategy = XGBoostDirectionStrategy()
-    else:
+    try:
+        registry = StrategyRegistry()
+        registry.discover(STRATEGIES_DIR, MODELS_DIR)
+        strategy = registry.get(args.strategy)
+    except KeyError:
         print(f"Unknown strategy: {args.strategy}")
+        print(f"Available strategies: {registry.list_names()}")
         return
         
     # 3. Run Backtest

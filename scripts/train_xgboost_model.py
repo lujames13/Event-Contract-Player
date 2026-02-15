@@ -1,4 +1,6 @@
 """
+DEPRECATED: This script is deprecated. Use scripts/train_model.py instead.
+
 訓練 XGBoost 方向預測模型並儲存
 
 功能:
@@ -22,7 +24,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from btc_predictor.data.store import DataStore
-from btc_predictor.strategies.xgboost_direction.model import XGBoostDirectionModel
+from btc_predictor.strategies.xgboost_v1.model import XGBoostDirectionModel
 
 
 def train_model(timeframe_minutes: int, data_store: DataStore, output_dir: Path):
@@ -64,7 +66,10 @@ def train_model(timeframe_minutes: int, data_store: DataStore, output_dir: Path)
     
     # 3. 儲存模型
     output_dir.mkdir(parents=True, exist_ok=True)
-    model_path = output_dir / f"xgboost_{timeframe_minutes}m.pkl"
+    model_path = output_dir / f"xgboost_v1/{timeframe_minutes}m.pkl"
+    
+    # Ensure subdirectory exists
+    model_path.parent.mkdir(parents=True, exist_ok=True)
     
     print(f"💾 儲存模型至 {model_path}")
     model.save(str(model_path))

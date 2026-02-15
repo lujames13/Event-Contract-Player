@@ -482,7 +482,36 @@ grep "Discord Bot 指令介面" docs/ARCHITECTURE.md
 
 ### Coding Agent 回報
 
-_（完成後填寫：實際修改了哪些檔案、遇到的問題、測試結果）_
+**狀態：** ✅ 已完成 (2026-02-15)
+
+**1. 修改檔案清單：**
+- **新增：**
+  - `src/btc_predictor/strategies/registry.py` (Strategy Registry 實作)
+  - `scripts/train_model.py` (通用訓練腳本，支援 `--strategy` 與 `--timeframe`)
+  - `tests/test_strategies/test_registry.py` (Registry 測試)
+  - `tests/test_backtest_flat.py` (平盤邏輯測試)
+- **重構與移動：**
+  - `src/btc_predictor/strategies/xgboost_direction/` → `src/btc_predictor/strategies/xgboost_v1/`
+  - `models/*.pkl` → `models/xgboost_v1/*.pkl`
+- **修改：**
+  - `docs/ARCHITECTURE.md` (新增 System Overview, Registry 說明, Discord Bot 介面)
+  - `src/btc_predictor/backtest/engine.py` (修復 lower 平盤判定 bug)
+  - `src/btc_predictor/strategies/xgboost_v1/strategy.py` (支援多模型管理 `self.models`，新增 `save_model` 與 `load_models_from_dir` 支援)
+  - `scripts/backtest.py` (整合 Registry)
+  - `scripts/run_live.py` (更新 import 與模型路徑)
+  - `scripts/train_xgboost_model.py` (標記 Deprecated)
+  - `tests/` 下相關測試隨路徑調整更新
+
+**2. 遇到的問題與解決：**
+- **XGBoost 策略多 timeframe 支援：** 原本 `XGBoostDirectionStrategy` 只持有一個 `self.model`。為了配合 Registry 與 `run_live` 的多 timeframe 需求，將其重構為 `self.models = {}` (dict 結構)，並修改 `predict` 與 `fit` 根據 `timeframe_minutes` 選擇正確模型。
+- **Import 路徑問題：** `scripts/backtest.py` 與 `tests` 執行時遇到 `ModuleNotFoundError`，已透過 `sys.path.append` 或 `PYTHONPATH` 解決。
+- **Lint 修復：** `tests/test_registry.py` 中 `Path` 未引入導致錯誤，已修正。
+
+**3. 測試結果：**
+- `uv run pytest` 全數通過 (29 passed)。
+- `grep` 檢查確認 `xgboost_direction` 舊名稱已清除。
+- `scripts/train_model.py` 測試訓練成功。
+- `scripts/backtest.py` 測試回測成功。
 
 ### Review Agent 回報
 

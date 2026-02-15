@@ -5,26 +5,36 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Data Pipeline Layer                       │
-│  Binance WebSocket (OHLCV stream) · Fear & Greed Index      │
-│  [Phase 2+] CryptoBERT 情緒 · 鏈上指標 · DXY              │
+│  Binance WebSocket (1m OHLCV stream)                        │
+│  Binance REST API (歷史回填)                                 │
+│  [未來] Fear & Greed · DXY · CryptoBERT                     │
 └──────────────┬──────────────────────────────────────────────┘
-               │ OHLCV DataFrame + 特徵
+               │ OHLCV DataFrame（共用，只生成一次）
                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 Prediction Engine Layer                      │
-│  各策略繼承 BaseStrategy                                     │
-│  每個策略獨立輸出 PredictionSignal                            │
+│              Strategy Registry (多模型並行)                   │
+│                                                             │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │
+│  │ xgboost_v1   │ │ lgbm_v1      │ │ mlp_v1       │  ...   │
+│  │ (BaseStrategy)│ │ (BaseStrategy)│ │ (BaseStrategy)│        │
+│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘        │
+│         │                │                │                 │
+│         ▼                ▼                ▼                 │
+│    PredictionSignal PredictionSignal PredictionSignal        │
 └──────────────┬──────────────────────────────────────────────┘
-               │ PredictionSignal
+               │ List[PredictionSignal]
                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               Decision & Simulation Layer                   │
-│  信心度 ≥ 閾值? → SimulatedTrade → SQLite                   │
-│  風控檢查 → 統計計算                                         │
+│  每個 signal 獨立進行：                                      │
+│  信心度 ≥ 閾值? → SimulatedTrade → SQLite        │
+│  統計計算（per strategy × timeframe）                        │
 └──────────┬─────────────────────────┬────────────────────────┘
            │                         │
            ▼                         ▼
-   Phase 2: CLI 統計報表     Phase 3: Discord Bot → RealTrade
+   CLI 統計報表 / 回測          Discord Bot
+   (scripts/backtest.py)       /predict  /stats  /models
+                               自動通知（高信心 + 到期結果）
 ```
 
 ---
@@ -158,6 +168,70 @@ class BaseStrategy(ABC):
 
 ---
 
+## Strategy Registry（多模型管理）
+
+系統透過 Strategy Registry 管理多個同時運行的策略。
+
+### 策略目錄結構
+
+```
+src/btc_predictor/strategies/
+├── base.py                    # BaseStrategy 基類
+├── registry.py                # ★ 策略自動發現與註冊
+├── xgboost_v1/                # 每個策略一個目錄
+│   ├── __init__.py
+│   ├── strategy.py            # 必須包含一個繼承 BaseStrategy 的 class
+│   ├── features.py            # 策略專屬的特徵工程
+│   └── model.py               # 策略專屬的模型邏輯
+├── lgbm_v1/
+└── ...
+```
+
+### 模型檔案位置
+
+已訓練的模型檔案存放在：
+
+```
+models/
+├── xgboost_v1/
+│   ├── 10m.pkl
+│   ├── 30m.pkl
+│   ├── 60m.pkl
+│   └── 1440m.pkl
+├── lgbm_v1/
+│   └── ...
+└── ...
+```
+
+策略載入時自動從對應目錄讀取模型。若模型檔不存在，策略標記為「未訓練」，不參與預測。
+
+### Registry 介面
+
+```python
+# src/btc_predictor/strategies/registry.py
+
+class StrategyRegistry:
+    """自動發現並管理所有策略。"""
+
+    def discover(self, strategies_dir: Path, models_dir: Path) -> None:
+        """掃描 strategies_dir 下的子目錄，載入繼承 BaseStrategy 的策略。"""
+        ...
+
+    def get(self, name: str) -> BaseStrategy:
+        """根據名稱取得策略實例。"""
+        ...
+
+    def list_names(self) -> List[str]:
+        """列出所有已註冊的策略名稱。"""
+        ...
+
+    def list_strategies(self) -> List[BaseStrategy]:
+        """列出所有已註冊的策略實例。"""
+        ...
+```
+
+---
+
 ## 資料層
 
 ### SQLite Schema
@@ -246,3 +320,21 @@ def calculate_bet(confidence: float, timeframe_minutes: int) -> float:
 | 3 | DXY 美元指數 | 無 | Yahoo Finance API |
 | 4 | CryptoBERT 情緒 | ~2GB VRAM | ElKulako/cryptobert (inference only) |
 | 5 | 鏈上指標 (NVT, MVRV, SOPR) | 無 | Glassnode API (付費) |
+
+---
+
+## Discord Bot 指令介面（Gate 2）
+
+### /predict [timeframe]
+用當前市場數據跑所有已載入模型，回傳每個模型的預測方向 + confidence + 下注建議。
+
+### /stats [model_name]
+- 不指定 model_name → 顯示所有模型的摘要對比表（DA、Trades、PnL）
+- 指定 model_name → 顯示該模型的詳細統計（含校準、drawdown）
+
+### /models
+列出所有已載入模型及其回測表現摘要 + live 運行狀態。
+
+### 自動通知
+- 當任何策略 confidence > threshold 時，自動發送「交易信號」通知
+- 到期時自動發送結果通知（是否獲勝 + PnL）

@@ -81,9 +81,9 @@ def run_backtest(
                     
                     # Result logic: higher wins if close > open
                     if signal.direction == "higher":
-                        is_win = close_price > open_price
+                        is_win = close_price > open_price      # 嚴格大於才算贏
                     else:
-                        is_win = close_price <= open_price # PROGRESS.md: close == open is lose for higher
+                        is_win = close_price < open_price      # 嚴格小於才算贏
                         
                     result = "win" if is_win else "lose"
                     pnl = bet * (payout_ratio - 1) if is_win else -bet

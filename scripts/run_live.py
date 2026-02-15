@@ -26,7 +26,7 @@ def check_model_exists(model_path: str) -> bool:
     print(f"✅ 找到模型檔案: {model_path}")
     return True
 
-from btc_predictor.strategies.xgboost_direction.strategy import XGBoostDirectionStrategy
+from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy
 
 from btc_predictor.utils.config import load_constants
 from btc_predictor.discord_bot.bot import EventContractBot
@@ -69,7 +69,7 @@ async def main():
     client = Client(api_key, api_secret)
     
     # Initialize strategies with pre-trained models
-    MODEL_PATH = "models/xgboost_10m.pkl"  # 預設使用 10 分鐘模型
+    MODEL_PATH = "models/xgboost_v1/10m.pkl"  # 預設使用 10 分鐘模型
 
     if not check_model_exists(MODEL_PATH):
         print("\n⚠️  未找到預訓練模型，策略將無法運作")

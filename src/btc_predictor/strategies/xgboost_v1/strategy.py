@@ -2,18 +2,37 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+from pathlib import Path
 from btc_predictor.strategies.base import BaseStrategy
 from btc_predictor.models import PredictionSignal
-from btc_predictor.strategies.xgboost_direction.features import generate_features, get_feature_columns
-from btc_predictor.strategies.xgboost_direction.model import predict_higher_probability, load_model, train_model
+from btc_predictor.strategies.xgboost_v1.features import generate_features, get_feature_columns
+from btc_predictor.strategies.xgboost_v1.model import predict_higher_probability, load_model, train_model
 from btc_predictor.data.labeling import add_direction_labels
 
 class XGBoostDirectionStrategy(BaseStrategy):
     def __init__(self, model_path: Optional[str] = None, model=None):
         self._name = "xgboost_v1"
-        self.model = model
+        self.models = {}  # timeframe -> model
+        
+        # Backward compatibility for single model loading
         if model_path:
-            self.model = load_model(model_path)
+            # Try to infer timeframe from filename, default to 10m if not found
+            # e.g. "models/xgboost_v1/30m.pkl" -> 30
+            try:
+                p = Path(model_path)
+                stem = p.stem  # "30m"
+                if stem.endswith("m") and stem[:-1].isdigit():
+                    tf = int(stem[:-1])
+                else:
+                    tf = 10
+                self.models[tf] = load_model(model_path)
+            except Exception:
+                # Fallback
+                self.models[10] = load_model(model_path)
+                
+        if model:
+            # Assume 10m for passed model object if no context
+            self.models[10] = model
 
     @property
     def name(self) -> str:
@@ -22,6 +41,31 @@ class XGBoostDirectionStrategy(BaseStrategy):
     @property
     def requires_fitting(self) -> bool:
         return True
+        
+    def load_models_from_dir(self, models_dir: Path):
+        """Load all .pkl files from the directory as models."""
+        if not models_dir.exists():
+            return
+            
+        for file_path in models_dir.glob("*.pkl"):
+            stem = file_path.stem  # e.g. "10m"
+            if stem.endswith("m") and stem[:-1].isdigit():
+                tf = int(stem[:-1])
+                try:
+                    self.models[tf] = load_model(str(file_path))
+                except Exception as e:
+                    print(f"Failed to load model {file_path}: {e}")
+
+    def save_model(self, timeframe: int, path: str):
+        """Save the model for a specific timeframe to path."""
+        model = self.models.get(timeframe)
+        if model is None:
+            raise ValueError(f"No model found for timeframe {timeframe}")
+        
+        # Import save_model from model.py
+        from btc_predictor.strategies.xgboost_v1.model import save_model as _save_impl
+        _save_impl(model, path)
+
 
     def fit(
         self,
@@ -49,7 +93,8 @@ class XGBoostDirectionStrategy(BaseStrategy):
         y = labeled_df["label"]
         
         # 5. Train model
-        self.model = train_model(X, y)
+        model = train_model(X, y)
+        self.models[timeframe_minutes] = model
 
     def predict(
         self,
@@ -59,8 +104,16 @@ class XGBoostDirectionStrategy(BaseStrategy):
         """
         Generate prediction signal using the XGBoost model.
         """
-        if self.model is None:
-            raise ValueError("Model not loaded/trained for XGBoostDirectionStrategy")
+        model = self.models.get(timeframe_minutes)
+        if model is None:
+            # If no model for this timeframe, maybe we should return a neutral signal?
+            # Or raise error? The spec says "un-trained strategies don't participate".
+            # But here `predict` is called, so it expects a signal.
+            # BaseStrategy interface doesn't define error behavior clearly.
+            # But the caller (engine) expects PredictionSignal.
+            # Let's raise an error or return neutral.
+            # Raising error is safer to detect issues.
+            raise ValueError(f"Model not loaded/trained for XGBoostDirectionStrategy timeframe {timeframe_minutes}")
             
         # 1. Generate features
         feat_df = generate_features(ohlcv)
@@ -73,7 +126,7 @@ class XGBoostDirectionStrategy(BaseStrategy):
         X = latest_features[feature_cols]
         
         # 4. Predict probability
-        prob_higher = predict_higher_probability(self.model, X)[0]
+        prob_higher = predict_higher_probability(model, X)[0]
         
         # 5. Determine direction and confidence
         if prob_higher > 0.5:

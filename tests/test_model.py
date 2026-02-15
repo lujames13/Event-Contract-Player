@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import numpy as np
 import os
-from btc_predictor.strategies.xgboost_direction.model import train_model, predict_higher_probability, save_model, load_model
+from btc_predictor.strategies.xgboost_v1.model import train_model, predict_higher_probability, save_model, load_model
 
 @pytest.fixture
 def mock_training_data():

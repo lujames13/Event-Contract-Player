@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from btc_predictor.strategies.xgboost_direction.features import generate_features, get_feature_columns
+from btc_predictor.strategies.xgboost_v1.features import generate_features, get_feature_columns
 
 @pytest.fixture
 def sample_ohlcv():

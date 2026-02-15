@@ -5,7 +5,7 @@ import pickle
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
-from btc_predictor.strategies.xgboost_direction.features import generate_features, get_feature_columns
+from btc_predictor.strategies.xgboost_v1.features import generate_features, get_feature_columns
 from btc_predictor.data.labeling import add_direction_labels
 
 def train_model(

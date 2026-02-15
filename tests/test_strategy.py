@@ -1,9 +1,9 @@
 import pytest
 import pandas as pd
 import numpy as np
-from btc_predictor.strategies.xgboost_direction.strategy import XGBoostDirectionStrategy
-from btc_predictor.strategies.xgboost_direction.model import train_model
-from btc_predictor.strategies.xgboost_direction.features import get_feature_columns, generate_features
+from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy
+from btc_predictor.strategies.xgboost_v1.model import train_model
+from btc_predictor.strategies.xgboost_v1.features import get_feature_columns, generate_features
 from btc_predictor.models import PredictionSignal
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def trained_strategy():
     
     # Generate labels (random for dummy)
     from btc_predictor.data.labeling import add_direction_labels
-    df_with_labels = add_direction_labels(df, timeframe_minutes=5)
+    df_with_labels = add_direction_labels(df, timeframe_minutes=10)
     
     # Generate features
     feat_df = generate_features(df_with_labels)
@@ -38,14 +38,14 @@ def trained_strategy():
 def test_strategy_predict(trained_strategy):
     strategy, df = trained_strategy
     
-    signal = strategy.predict(df, timeframe_minutes=5)
+    signal = strategy.predict(df, timeframe_minutes=10)
     
     assert isinstance(signal, PredictionSignal)
     assert signal.strategy_name == "xgboost_v1"
     assert signal.direction in ["higher", "lower"]
     assert 0.5 <= signal.confidence <= 1.0
     assert signal.current_price == df['close'].iloc[-1]
-    assert signal.timeframe_minutes == 5
+    assert signal.timeframe_minutes == 10
 
 def test_strategy_name(trained_strategy):
     strategy, _ = trained_strategy
