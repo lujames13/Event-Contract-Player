@@ -207,5 +207,5 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 # Project specific
-reports/
+reports/*.json
 models/

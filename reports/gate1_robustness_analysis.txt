@@ -1,0 +1,18 @@
+Gate 1 Robustness Analysis: reports/backtest_lgbm_v2_60m_20260216_042953.json
+==================================================
+Total Trades: 831
+Higher Trades: 383 (46.09%)
+Lower Trades: 448 (53.91%)
+Higher DA: 0.5770
+Lower DA: 0.5268
+DA Bias (abs diff): 0.0502
+------------------------------
+Per-fold DA Stats (N=67):
+  Mean: 0.6063
+  Std:  0.2184
+  Min:  0.0000
+  Max:  1.0000
+  Folds above breakeven (0.5405): 41/67
+  Worst 3 folds DA: ['0.0000', '0.2000', '0.2000']
+  Trimmed Mean DA (excl. 1 best/worst): 0.6096
+  ⚠️ WARNING: Fold σ > 10% (High volatility)

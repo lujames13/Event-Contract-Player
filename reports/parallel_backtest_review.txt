@@ -1,0 +1,33 @@
+Parallelized Backtest Engine Review
+====================================
+
+1. Implementation Description
+----------------------------
+- Implementation location: `src/btc_predictor/backtest/engine.py`
+- Library used: `joblib.Parallel` with `delayed`
+- Execution mode: `backend="threading"`
+- Grain size: Parallelization is applied at the **fold** level (Walk-forward windows).
+- Resource management: Default `n_jobs=-2` (uses all but one core).
+
+2. Safety and Isolation
+----------------------
+- Strategy Isolation: The engine uses `copy.deepcopy(strategy)` inside each worker thread (`_process_fold`). This prevents state contamination between different folds when running in parallel.
+- Data Isolation: The `ohlcv` DataFrame is passed as a shared object in memory (which is efficient in threading), but workers only read from specific windows. No writes to the shared DataFrame are performed.
+
+3. Determinism and Randomness
+-----------------------------
+- Random Seeds: Most strategies (e.g., `xgboost_v1`, `lgbm_v1`) explicitly set `random_state` in their model parameters (e.g., `random_state: 42`).
+- Thread Safety: Since most ML libraries (XGBoost, LightGBM) release the GIL during heavy computation and handle their own internal parallelism safely, `backend="threading"` is appropriate and faster than `multiprocessing` due to avoiding large data copies.
+- Global State: There is no reliance on global state in the walk-forward loop that would be affected by the `threading` backend.
+
+4. Reproducibility Test Results
+-------------------------------
+- Test Case: `lgbm_v1` on 30m, 180 days training.
+- Configuration: Parallel execution with `n_jobs=-2`.
+- Run 1 DA: 54.3396%, PnL: 14.9325, Trades: 530
+- Run 2 DA: 54.3396%, PnL: 14.9325, Trades: 530
+- Status: **Identical Results** (Confirmed by automated comparison).
+
+5. Conclusion
+-------------
+✅ **Safe and Robust**. The parallel implementation correctly isolates fold state and preserves deterministic results. The speed improvement is significant without introducing side effects.
