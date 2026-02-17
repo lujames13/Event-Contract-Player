@@ -135,13 +135,17 @@ uv run pytest tests/test_bot_models.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 完成了什麼，修改了哪些檔案 -->
+- 新增 `DataStore.get_strategy_summary()` 於 `src/btc_predictor/data/store.py`，用於查詢策略累計統計。
+- 新增 `/models` slash command 於 `src/btc_predictor/discord_bot/bot.py`，以 Embed 格式展示已載入模型狀態。
+- 新增 `tests/test_bot_models.py` 並通過測試。
 
 ### 驗收自檢
-<!-- 逐條列出驗收標準的 pass/fail -->
+1. `/models` 指令存在：✅ (`grep` 通過)
+2. `DataStore.get_strategy_summary` 存在：✅ (`grep` 通過)
+3. 測試通過：✅ (`pytest tests/test_bot_models.py` 通過)
 
 ### 遇到的問題
-<!-- 技術障礙、設計疑慮 -->
+- 無。
 
 ---
 

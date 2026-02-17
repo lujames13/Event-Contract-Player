@@ -132,7 +132,7 @@
   - 指定 model_name → 顯示該模型的詳細統計（DA、PnL、校準、drawdown）
   - 支援按 timeframe 篩選
 
-- [ ] **2.2.3** `/models` 指令
+- [x] **2.2.3** `/models` 指令
   - 列出所有已載入模型
   - 顯示每個模型的回測表現摘要 + live 運行狀態
 

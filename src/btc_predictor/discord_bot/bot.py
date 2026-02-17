@@ -127,6 +127,54 @@ class EventContractCog(commands.Cog):
         
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(name="models", description="列出所有已載入模型")
+    async def models(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.defer()
+        except discord.errors.NotFound:
+            return
+
+        pipeline = getattr(self.bot, 'pipeline', None)
+        store = getattr(self.bot, 'store', None)
+
+        if not pipeline:
+            await interaction.followup.send("無法取得模型清單（Pipeline 未連線）", ephemeral=True)
+            return
+
+        if not store:
+            await interaction.followup.send("無法取得統計數據（Store 未初始化）", ephemeral=True)
+            return
+
+        embed = discord.Embed(title="🤖 已載入模型", color=discord.Color.blue())
+        
+        if not pipeline.strategies:
+            embed.description = "目前未載入任何策略。"
+            await interaction.followup.send(embed=embed)
+            return
+
+        import asyncio
+        for strategy in pipeline.strategies:
+            summary = await asyncio.to_thread(store.get_strategy_summary, strategy.name)
+            
+            timeframes_str = ", ".join([f"{tf}m" for tf in strategy.available_timeframes])
+            
+            if summary['settled_trades'] > 0:
+                stats_str = (
+                    f"Live 交易: {summary['total_trades']} 筆 | "
+                    f"DA: {summary['da']:.1%} | "
+                    f"PnL: {summary['total_pnl']:+.2f} USDT"
+                )
+            else:
+                stats_str = f"Live 交易: {summary['total_trades']} 筆 | 尚無結算紀錄"
+                
+            field_val = (
+                f"Timeframes: {timeframes_str}\n"
+                f"{stats_str}"
+            )
+            embed.add_field(name=f"📈 {strategy.name}", value=field_val, inline=False)
+
+        await interaction.followup.send(embed=embed)
+
 class EventContractBot(commands.Bot):
     def __init__(self, channel_id: int, guild_id: int = None):
         intents = discord.Intents.default()

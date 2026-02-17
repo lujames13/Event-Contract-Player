@@ -183,6 +183,29 @@ class DataStore:
                 WHERE id = ?
             """, (close_price, result, pnl, trade_id))
 
+    def get_strategy_summary(self, strategy_name: str) -> dict:
+        """回傳指定策略的累計統計摘要。"""
+        with self._get_connection() as conn:
+            row = conn.execute("""
+                SELECT
+                    COUNT(*) as total_trades,
+                    COALESCE(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0) as wins,
+                    COALESCE(SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END), 0) as settled,
+                    COALESCE(SUM(pnl), 0) as total_pnl
+                FROM simulated_trades
+                WHERE strategy_name = ?
+            """, (strategy_name,)).fetchone()
+        
+        total, wins, settled, pnl = row
+        da = wins / settled if settled > 0 else 0.0
+        return {
+            "total_trades": total,
+            "settled_trades": settled,
+            "wins": wins,
+            "da": da,
+            "total_pnl": pnl
+        }
+
     def get_daily_stats(self, strategy_name: str, date_str: str) -> dict:
         """
         Get daily statistics for risk control.
