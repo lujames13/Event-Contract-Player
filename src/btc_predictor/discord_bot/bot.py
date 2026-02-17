@@ -398,14 +398,22 @@ class EventContractBot(commands.Bot):
         if not self.target_channel or self.paused:
             return
             
+        threshold = CONFIDENCE_THRESHOLDS.get(trade.timeframe_minutes, 0.6)
+        is_above = trade.confidence >= threshold
+        
         embed = discord.Embed(
             title=f"🔮 [{trade.strategy_name}] BTCUSDT {trade.timeframe_minutes}m → {trade.direction.upper()}",
             color=discord.Color.blue()
         )
-        embed.add_field(name="📊 信心度", value=f"{trade.confidence:.1%}", inline=True)
-        embed.add_field(name="下注", value=f"${trade.bet_amount}", inline=True)
-        embed.add_field(name="💰 開倉價", value=f"${trade.open_price:,.2f}", inline=False)
-        embed.add_field(name="⏰ 到期", value=f"{trade.expiry_time} UTC", inline=False)
+        
+        desc = (
+            f"📊 信心度:    {trade.confidence:.4f}\n"
+            f"💰 下注建議:  {'✅' if is_above else '❌'} {trade.bet_amount:.1f} USDT\n"
+            f"📍 開倉價:    ${trade.open_price:,.2f}\n"
+            f"⏰ 到期:      {trade.expiry_time} UTC\n"
+            f"🎯 閾值:      {threshold}（{'已超過' if is_above else '未達'}）"
+        )
+        embed.description = desc
         
         await self.target_channel.send(embed=embed)
 
@@ -424,10 +432,23 @@ class EventContractBot(commands.Bot):
             title=f"{result_emoji} [{trade.strategy_name}] {trade.timeframe_minutes}m {trade.direction.upper()}",
             color=color
         )
-        embed.add_field(name="開倉", value=f"${trade.open_price:,.2f}", inline=True)
-        embed.add_field(name="收盤", value=f"${trade.close_price:,.2f}", inline=True)
-        embed.add_field(name="盈虧", value=f"**{trade.pnl:+.2f}** USDT", inline=False)
         
+        desc = (
+            f"開倉: ${trade.open_price:,.2f} → 收盤: ${trade.close_price:,.2f}\n"
+            f"盈虧: **{trade.pnl:+.2f}** USDT\n"
+        )
+        
+        # Add cumulative stats
+        try:
+            summary = await asyncio.to_thread(self.store.get_strategy_summary, trade.strategy_name)
+            if summary and summary.get('settled_trades', 0) > 0:
+                desc += "─────────────────\n"
+                desc += f"📊 累計: {summary['total_trades']} 筆 | DA {summary['da']:.1%} | PnL {summary['total_pnl']:+.2f}"
+        except Exception:
+            # Skip if error (e.g. store not set or DB error)
+            pass
+            
+        embed.description = desc
         await self.target_channel.send(embed=embed)
 
 async def run_bot():

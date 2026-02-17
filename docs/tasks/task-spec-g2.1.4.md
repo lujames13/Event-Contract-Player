@@ -1,6 +1,6 @@
 # Task Spec G2.1.4 — 自動通知強化：信號 + 結算 embed 升級
 
-<!-- status: draft -->
+<!-- status: completed -->
 <!-- created: 2026-02-17 -->
 <!-- architect: Claude Opus (Chat Project) -->
 
@@ -126,13 +126,16 @@ uv run pytest tests/test_bot_notifications.py -v
 
 ---
 
-## Coding Agent 回報區
-
 ### 實作結果
-<!-- 完成了什麼，修改了哪些檔案 -->
+- 升級了 `src/btc_predictor/discord_bot/bot.py` 中的 `send_signal()`，在 embed description 中加入「🎯 閾值」資訊與下注建議狀態。
+- 升級了 `send_settlement()`，透過 `get_strategy_summary` 取得並顯示「📊 累計」統計資料（筆數、DA、PnL）。
+- 建立了 `tests/test_bot_notifications.py` 進行新 embed 格式的單元測試與 Mock 驗證。
 
 ### 驗收自檢
-<!-- 逐條列出驗收標準的 pass/fail -->
+- [x] 1. send_signal 包含閾值資訊 (包含 `CONFIDENCE_THRESHOLDS` 邏輯)
+- [x] 2. send_settlement 呼叫 get_strategy_summary 並顯示累計數據
+- [x] 3. 方法簽名未變 (保持 `async def send_signal(self, trade)` 等)
+- [x] 4. 測試通過 (`pytest tests/test_bot_notifications.py`)
 
 ### 遇到的問題
 <!-- 技術障礙、設計疑慮 -->
