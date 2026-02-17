@@ -62,7 +62,7 @@ class DataPipeline:
         """啟動時回填最近缺失的 K 線"""
         logger.info("Checking for missing historical data...")
         # Check latest 1m ohlcv in store
-        latest_df = self.store.get_latest_ohlcv(self.symbol, "1m", limit=1)
+        latest_df = await asyncio.to_thread(self.store.get_latest_ohlcv, self.symbol, "1m", limit=1)
         
         start_ts_ms = None
         now_ts_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -78,26 +78,30 @@ class DataPipeline:
             
         if start_ts_ms:
             logger.info(f"Backfilling data since {datetime.fromtimestamp(start_ts_ms/1000, tz=timezone.utc)}")
-            temp_client = await AsyncClient.create()
+            import os
+            api_key = os.getenv("BINANCE_API_KEY")
+            api_secret = os.getenv("BINANCE_API_SECRET")
+            
+            temp_client = await AsyncClient.create(api_key, api_secret)
             try:
                 klines = await temp_client.get_historical_klines(
                     self.symbol, "1m", start_str=start_ts_ms
                 )
                 if klines:
-                    # kline format: [startTime, open, high, low, close, volume, closeTime, ...]
+                    logger.info(f"Fetched {len(klines)} historical klines. Saving to DB...")
                     df = pd.DataFrame(klines, columns=[
                         "open_time", "open", "high", "low", "close", "volume", 
                         "close_time", "quote_volume", "count", "taker_buy_base", 
                         "taker_buy_quote", "ignore"
                     ])
-                    # Keep only required columns
                     df = df[["open_time", "open", "high", "low", "close", "volume", "close_time"]]
-                    # Convert to numeric
                     for col in ["open", "high", "low", "close", "volume"]:
                         df[col] = pd.to_numeric(df[col])
                     
-                    self.store.save_ohlcv(df, self.symbol, "1m")
+                    await asyncio.to_thread(self.store.save_ohlcv, df, self.symbol, "1m")
                     logger.info(f"Successfully backfilled {len(df)} 1m K-lines.")
+                else:
+                    logger.info("No missing historical data to backfill.")
             except Exception as e:
                 logger.error(f"Failed to backfill historical data: {e}")
             finally:
@@ -140,18 +144,20 @@ class DataPipeline:
                             "volume": float(kline['v']),
                             "close_time": kline['T']
                         }])
-                        self.store.save_ohlcv(df_row, self.symbol, interval)
+                        await asyncio.to_thread(self.store.save_ohlcv, df_row, self.symbol, interval)
                         
                         if interval == "1m":
                             current_ts_ms = kline['t']
                             current_dt = datetime.fromtimestamp(current_ts_ms / 1000, tz=timezone.utc)
                             
                             # Explicit trigger map for each timeframe
+                            # We trigger when the previous candle closes (at the start of the next minute)
+                            # e.g., for 10m buckets (00, 10, 20...), we trigger when candles 59, 09, 19... close.
                             TRIGGER_MAP = {
-                                10: lambda dt: dt.minute % 10 == 0,
-                                30: lambda dt: dt.minute % 30 == 0,
-                                60: lambda dt: dt.minute == 0,
-                                1440: lambda dt: dt.hour == 0 and dt.minute == 0,
+                                10: lambda dt: (dt.minute + 1) % 10 == 0,
+                                30: lambda dt: (dt.minute + 1) % 30 == 0,
+                                60: lambda dt: (dt.minute + 1) % 60 == 0,
+                                1440: lambda dt: dt.hour == 23 and dt.minute == 59,
                             }
                             
                             for timeframe, trigger_fn in TRIGGER_MAP.items():
@@ -164,7 +170,9 @@ class DataPipeline:
                     raise # Rethrow to break gather and trigger reconnection
 
     async def _trigger_strategies(self, timeframe: int):
-        df = self.store.get_ohlcv(self.symbol, "1m", limit=500)
+        logger.info(f"Triggering strategies for {timeframe}m timeframe...")
+        # Offload DB read to thread
+        df = await asyncio.to_thread(self.store.get_latest_ohlcv, self.symbol, "1m", limit=500)
         
         for strategy in self.strategies:
             # Only trigger if the strategy supports this timeframe
@@ -172,17 +180,17 @@ class DataPipeline:
                 continue
                 
             try:
-                # 1. Prediction
-                signal = strategy.predict(df, timeframe)
+                # 1. Prediction (CPU-intensive)
+                signal = await asyncio.to_thread(strategy.predict, df, timeframe)
                 
-                # 2. Simulation Engine (saves to DB, returns trade if allowed)
-                trade = process_signal(signal, self.store)
+                # 2. Simulation Engine (Sync DB operations)
+                trade = await asyncio.to_thread(process_signal, signal, self.store)
                 
                 # 3. Discord Notification
                 if trade and self.bot:
                     await self.bot.send_signal(trade)
             except Exception as e:
-                logger.error(f"Error triggering strategy {strategy.name} for {timeframe}m: {e}")
+                logger.error(f"Error triggering strategy {strategy.name} for {timeframe}m: {e}", exc_info=True)
 
     async def stop(self):
         self.is_running = False

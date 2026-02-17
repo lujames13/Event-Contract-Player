@@ -8,10 +8,10 @@ def test_timeframe_trigger_logic():
     
     # Define the trigger map locally for testing (should match pipeline.py)
     TRIGGER_MAP = {
-        10: lambda dt: dt.minute % 10 == 0,
-        30: lambda dt: dt.minute % 30 == 0,
-        60: lambda dt: dt.minute == 0,
-        1440: lambda dt: dt.hour == 0 and dt.minute == 0,
+        10: lambda dt: (dt.minute + 1) % 10 == 0,
+        30: lambda dt: (dt.minute + 1) % 30 == 0,
+        60: lambda dt: (dt.minute + 1) % 60 == 0,
+        1440: lambda dt: dt.hour == 23 and dt.minute == 59,
     }
 
     # Helper to create datetime
@@ -19,25 +19,25 @@ def test_timeframe_trigger_logic():
         return datetime(2024, 1, 1, hour, minute, tzinfo=timezone.utc)
 
     # 10m tests
-    assert TRIGGER_MAP[10](get_dt(1, 0)) is True
-    assert TRIGGER_MAP[10](get_dt(1, 10)) is True
-    assert TRIGGER_MAP[10](get_dt(1, 20)) is True
-    assert TRIGGER_MAP[10](get_dt(1, 5)) is False
+    assert TRIGGER_MAP[10](get_dt(1, 9)) is True
+    assert TRIGGER_MAP[10](get_dt(1, 19)) is True
+    assert TRIGGER_MAP[10](get_dt(1, 59)) is True
+    assert TRIGGER_MAP[10](get_dt(1, 0)) is False
 
     # 30m tests
-    assert TRIGGER_MAP[30](get_dt(1, 0)) is True
-    assert TRIGGER_MAP[30](get_dt(1, 30)) is True
-    assert TRIGGER_MAP[30](get_dt(1, 10)) is False
+    assert TRIGGER_MAP[30](get_dt(1, 29)) is True
+    assert TRIGGER_MAP[30](get_dt(1, 59)) is True
+    assert TRIGGER_MAP[30](get_dt(1, 0)) is False
 
     # 60m tests
-    assert TRIGGER_MAP[60](get_dt(1, 0)) is True
-    assert TRIGGER_MAP[60](get_dt(2, 0)) is True
-    assert TRIGGER_MAP[60](get_dt(1, 30)) is False
+    assert TRIGGER_MAP[60](get_dt(1, 59)) is True
+    assert TRIGGER_MAP[60](get_dt(2, 59)) is True
+    assert TRIGGER_MAP[60](get_dt(1, 0)) is False
 
     # 1440m tests
-    assert TRIGGER_MAP[1440](get_dt(0, 0)) is True
-    assert TRIGGER_MAP[1440](get_dt(1, 0)) is False
-    assert TRIGGER_MAP[1440](get_dt(0, 30)) is False
+    assert TRIGGER_MAP[1440](get_dt(23, 59)) is True
+    assert TRIGGER_MAP[1440](get_dt(0, 0)) is False
+    assert TRIGGER_MAP[1440](get_dt(0, 59)) is False
 
 @pytest.mark.asyncio
 async def test_pipeline_filters_strategies():

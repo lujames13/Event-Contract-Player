@@ -209,3 +209,4 @@ marimo/_lsp/
 # Project specific
 reports/*.json
 models/
+data/

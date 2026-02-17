@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -8,6 +9,8 @@ from btc_predictor.models import PredictionSignal
 from btc_predictor.strategies.catboost_v1.features import generate_features, get_feature_columns
 from btc_predictor.strategies.catboost_v1.model import train_model, load_model, save_model
 from btc_predictor.data.labeling import add_direction_labels
+
+logger = logging.getLogger(__name__)
 
 class CatBoostDirectionStrategy(BaseStrategy):
     """
@@ -41,19 +44,15 @@ class CatBoostDirectionStrategy(BaseStrategy):
         return list(self.models.keys())
         
     def load_models_from_dir(self, models_dir: Path):
-        for file_path in models_dir.glob("catboost_v1_*.cbm"):
-            stem = file_path.stem
-            # Expected name: catboost_v1_10m.cbm
-            parts = stem.split("_")
-            if len(parts) >= 3 and parts[-1].endswith("m"):
-                tf_part = parts[-1][:-1]
-                if tf_part.isdigit():
-                    tf = int(tf_part)
-                    try:
-                        self.models[tf] = load_model(str(file_path))
-                        print(f"Loaded CatBoost model for {tf}m")
-                    except Exception as e:
-                        print(f"Failed to load model {file_path}: {e}")
+        for file_path in models_dir.glob("*.cbm"):
+            stem = file_path.stem  # e.g. "10m"
+            if stem.endswith("m") and stem[:-1].isdigit():
+                tf = int(stem[:-1])
+                try:
+                    self.models[tf] = load_model(str(file_path))
+                    logger.info(f"Loaded CatBoost model for {tf}m")
+                except Exception as e:
+                    logger.error(f"Failed to load model {file_path}: {e}")
 
     def save_model(self, timeframe: int, path: str):
         model = self.models.get(timeframe)

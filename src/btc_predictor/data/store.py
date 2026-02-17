@@ -16,6 +16,7 @@ class DataStore:
     def _init_db(self):
         """Initialize SQLite tables based on ARCHITECTURE.md."""
         with self._get_connection() as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
             # Table for historical K-lines
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS ohlcv (

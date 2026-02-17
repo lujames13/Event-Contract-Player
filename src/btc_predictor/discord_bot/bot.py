@@ -11,26 +11,49 @@ class EventContractCog(commands.Cog):
 
     @app_commands.command(name="stats", description="顯示當日模擬交易統計數據")
     async def stats(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        
+        try:
+            await interaction.response.defer()
+        except discord.errors.NotFound:
+            return # Interaction already expired
+
         if not self.bot.store:
             await interaction.followup.send("DataStore not initialized.", ephemeral=True)
             return
         
         try:
+            import asyncio
             date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            # 確保使用正確的策略名稱
-            daily_stats = self.bot.store.get_daily_stats("xgboost_v1", date_str)
+            
+            # Since we could have multiple strategies, we show summary for active ones
+            # For now, let's just get stats for lgbm_v2 and catboost_v1 if they exist
+            strategies = ["lgbm_v2", "catboost_v1", "xgboost_v1"]
             
             embed = discord.Embed(title=f"📊 當日統計 ({date_str} UTC)", color=discord.Color.gold())
-            embed.add_field(name="今日交易", value=str(daily_stats.get('daily_trades', 0)), inline=True)
-            embed.add_field(name="今日虧損", value=f"{daily_stats.get('daily_loss', 0.0):.2f} USDT", inline=True)
-            embed.add_field(name="連敗次數", value=str(daily_stats.get('consecutive_losses', 0)), inline=True)
-            embed.add_field(name="狀態", value="⏸️ 已暫停" if self.bot.paused else "✅ 運行中", inline=False)
             
+            for strategy_name in strategies:
+                try:
+                    daily_stats = await asyncio.to_thread(self.bot.store.get_daily_stats, strategy_name, date_str)
+                    if daily_stats.get('daily_trades', 0) > 0:
+                        field_val = (
+                            f"交易數: {daily_stats.get('daily_trades', 0)}\n"
+                            f"PnL: {daily_stats.get('daily_loss', 0.0):+.2f} USDT\n"
+                            f"連敗: {daily_stats.get('consecutive_losses', 0)}"
+                        )
+                        embed.add_field(name=f"🔹 {strategy_name}", value=field_val, inline=True)
+                except Exception:
+                    continue
+
+            embed.add_field(name="系統狀態", value="⏸️ 已暫停" if self.bot.paused else "✅ 運行中", inline=False)
+            
+            if not embed.fields:
+                embed.description = "今日尚無交易紀錄。"
+                
             await interaction.followup.send(embed=embed)
         except Exception as e:
-            await interaction.followup.send(f"❌ 取得統計數據時出錯: {e}", ephemeral=True)
+            try:
+                await interaction.followup.send(f"❌ 取得統計數據時出錯: {e}", ephemeral=True)
+            except Exception:
+                pass
 
     @app_commands.command(name="pause", description="暫停模擬交易訊號推送")
     async def pause(self, interaction: discord.Interaction):

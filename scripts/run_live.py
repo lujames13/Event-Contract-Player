@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
-from binance.client import Client
+from binance import AsyncClient
 
 # Add src to sys.path to allow imports from btc_predictor
 sys.path.append(str(Path(__file__).parent.parent / "src"))
@@ -27,7 +27,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("run_live")
 
-async def settler_loop(store: DataStore, client: Client, bot: EventContractBot = None):
+async def settler_loop(store: DataStore, client: AsyncClient, bot: EventContractBot = None):
     """Periodic task to settle pending trades."""
     while True:
         try:
@@ -108,7 +108,7 @@ async def main():
     # 3. Dry-run Mode
     if args.dry_run:
         logger.info("Running in DRY-RUN mode.")
-        df = store.get_ohlcv("BTCUSDT", "1m", limit=500)
+        df = store.get_latest_ohlcv("BTCUSDT", "1m", limit=500)
         if df.empty:
             logger.error("No data in DB to perform dry-run. Please fetch some data first.")
             return
@@ -117,15 +117,15 @@ async def main():
             tfs = enabled_timeframes[s.name]
             for tf in tfs:
                 try:
-                    signal = s.predict(df, tf)
-                    logger.info(f"DRY-RUN | {s.name:10} | {tf:4}m | Dir: {signal.direction:6} | Conf: {signal.confidence:.4f} | Price: {signal.current_price}")
+                    pred_signal = s.predict(df, tf)
+                    logger.info(f"DRY-RUN | {s.name:10} | {tf:4}m | Dir: {pred_signal.direction:6} | Conf: {pred_signal.confidence:.4f} | Price: {pred_signal.current_price}")
                 except Exception as e:
                     logger.error(f"DRY-RUN | {s.name:10} | {tf:4}m | Error: {e}")
         logger.info("Dry-run completed.")
         return
 
     # 4. Setup Binance Clients
-    client = Client(api_key, api_secret)
+    client = await AsyncClient.create(api_key, api_secret)
     
     # 5. Setup Discord Bot
     bot = None
@@ -169,6 +169,7 @@ async def main():
     await pipeline.stop()
     if bot:
         await bot.close()
+    await client.close_connection()
     for task in tasks:
         task.cancel()
     

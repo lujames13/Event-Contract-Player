@@ -1,7 +1,7 @@
-import time
 import pandas as pd
 import asyncio
 import logging
+import json
 from datetime import datetime, timezone
 from btc_predictor.data.store import DataStore
 from btc_predictor.utils.config import load_constants
@@ -14,11 +14,11 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
     """
     Check for pending trades and settle them if expiry time has passed.
     """
-    pending = store.get_pending_trades()
+    pending = await asyncio.to_thread(store.get_pending_trades)
     if pending.empty:
         return
         
-    constants = load_constants()
+    constants = await asyncio.to_thread(load_constants)
     payout_ratios = constants.get("event_contract", {}).get("payout_ratio", {})
     
     now = datetime.now(timezone.utc)
@@ -39,7 +39,9 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
             
             # 1. Try SQLite first
             # We look for a 1m candle starting at the exactly expiry minute
-            df_price = store.get_ohlcv("BTCUSDT", "1m", start_time=expiry_ms, end_time=expiry_ms)
+            df_price = await asyncio.to_thread(
+                store.get_ohlcv, "BTCUSDT", "1m", start_time=expiry_ms, end_time=expiry_ms
+            )
             
             close_price = None
             if not df_price.empty:
@@ -90,7 +92,9 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
                 bet = float(row['bet_amount'])
                 pnl = bet * (payout_ratio - 1) if is_win else -bet
                 
-                store.update_simulated_trade(row['id'], close_price, result, float(pnl))
+                await asyncio.to_thread(
+                    store.update_simulated_trade, row['id'], close_price, result, float(pnl)
+                )
                 logger.info(f"Trade {row['id']} settled: {result} | PnL: {pnl:.4f}")
                 
                 # Discord Notification
@@ -107,7 +111,8 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
                         expiry_time=expiry_dt,
                         close_price=close_price,
                         result=result,
-                        pnl=float(pnl)
+                        pnl=float(pnl),
+                        features_used=json.loads(row['features_used']) if row['features_used'] else {}
                     )
                     try:
                         await bot.send_settlement(trade_obj)
