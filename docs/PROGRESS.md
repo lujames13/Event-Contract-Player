@@ -145,7 +145,7 @@
 
 - [x] **2.3.1** WebSocket 斷線自動重連（含指數退避） (G2.0)
 - [x] **2.3.2** 錯誤隔離：單一策略 exception 不影響其他策略運行 (G2.0)
-- [ ] **2.3.3** 健康檢查 endpoint 或 Discord `/health` 指令
+- [x] **2.3.3** 健康檢查 endpoint 或 Discord `/health` 指令
 
 ---
 

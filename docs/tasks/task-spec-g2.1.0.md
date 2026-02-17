@@ -166,13 +166,24 @@ uv run pytest tests/test_bot_health.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 完成了什麼，修改了哪些檔案 -->
+- 🟢 **src/btc_predictor/data/pipeline.py**: 新增 `trigger_count` 追蹤策略觸發次數。
+- 🟢 **src/btc_predictor/data/store.py**: 新增 `get_table_counts()` 用於統計 OHLCV 與交易筆數。
+- 🟢 **src/btc_predictor/discord_bot/bot.py**:
+    - 新增 `pipeline` 與 `start_time` 屬性。
+    - 實作 `/health` 指令，整合 WebSocket 狀態、Pipeline 進度、DB 統計與 Uptime。
+    - `on_ready` 時自動記錄啟動時間。
+- 🟢 **scripts/run_live.py**: 在啟動時將 `pipeline` 實例傳遞給 `bot`。
+- 🟢 **tests/test_bot_health.py**: 新增單元測試，驗證指令邏輯。
 
 ### 驗收自檢
-<!-- 逐條列出驗收標準的 pass/fail -->
+- [x] 1. `/health` 指令存在
+- [x] 2. DataStore 新方法存在
+- [x] 3. Pipeline trigger_count 存在
+- [x] 4. run_live.py 傳遞 pipeline 給 bot
+- [x] 5. 測試通過 (`uv run pytest tests/test_bot_health.py -v`)
 
 ### 遇到的問題
-<!-- 技術障礙、設計疑慮 -->
+- 無。實作過程順利，已修正 Task Spec 中的一點小 typo (`trades_counts` -> `trades_count`)。
 
 ---
 

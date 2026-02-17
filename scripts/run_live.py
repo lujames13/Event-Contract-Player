@@ -144,6 +144,8 @@ async def main():
     # Actually, pipeline.py currently triggers ALL timeframes. 
     # G2.0.2 will fix this in pipeline.py to only trigger available_timeframes.
     pipeline = DataPipeline("BTCUSDT", ["1m"], final_strategies, store, bot=bot)
+    if bot:
+        bot.pipeline = pipeline
     
     # 7. Handle Shutdown
     loop = asyncio.get_running_loop()

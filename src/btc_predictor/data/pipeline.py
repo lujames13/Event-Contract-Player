@@ -21,6 +21,7 @@ class DataPipeline:
         self.bm = None
         self.is_running = False
         self.last_kline_time = {} # interval -> datetime
+        self.trigger_count = 0
 
     async def start(self):
         self.is_running = True
@@ -170,6 +171,7 @@ class DataPipeline:
                     raise # Rethrow to break gather and trigger reconnection
 
     async def _trigger_strategies(self, timeframe: int):
+        self.trigger_count += 1
         logger.info(f"Triggering strategies for {timeframe}m timeframe...")
         # Offload DB read to thread
         df = await asyncio.to_thread(self.store.get_latest_ohlcv, self.symbol, "1m", limit=500)

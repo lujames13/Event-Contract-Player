@@ -230,3 +230,10 @@ class DataStore:
                 SELECT * FROM simulated_trades WHERE close_price IS NULL
                 ORDER BY expiry_time ASC
             """, conn)
+
+    def get_table_counts(self) -> dict[str, int]:
+        """回傳各 table 的 row count。"""
+        with self._get_connection() as conn:
+            ohlcv_count = conn.execute("SELECT COUNT(*) FROM ohlcv").fetchone()[0]
+            trades_count = conn.execute("SELECT COUNT(*) FROM simulated_trades").fetchone()[0]
+        return {"ohlcv": ohlcv_count, "simulated_trades": trades_count}

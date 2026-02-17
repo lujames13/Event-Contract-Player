@@ -65,6 +65,68 @@ class EventContractCog(commands.Cog):
         self.bot.paused = False
         await interaction.response.send_message("✅ 模擬交易已恢復。")
 
+    @app_commands.command(name="health", description="顯示系統健康狀態")
+    async def health(self, interaction: discord.Interaction):
+        try:
+            await interaction.response.defer()
+        except discord.errors.NotFound:
+            return
+
+        pipeline = getattr(self.bot, 'pipeline', None)
+        store = getattr(self.bot, 'store', None)
+        start_time = getattr(self.bot, 'start_time', None)
+
+        embed = discord.Embed(title="🏥 系統健康檢查", color=discord.Color.blue())
+        
+        # 1. WebSocket & Pipeline Status
+        if pipeline and pipeline.is_running:
+            # Calculate last kline delay
+            now = datetime.now(timezone.utc)
+            if pipeline.last_kline_time:
+                latest_kline_dt = max(pipeline.last_kline_time.values())
+                delay_sec = int((now - latest_kline_dt).total_seconds())
+                ws_status = f"✅ 連線中 | 最後收到 K 線: {delay_sec} 秒前"
+            else:
+                ws_status = "✅ 連線中 | 尚未收到資料"
+            
+            pipeline_status = f"✅ 運行中 | 已觸發策略: {pipeline.trigger_count} 次"
+            strategy_count = f"{len(pipeline.strategies)} 個已載入"
+        else:
+            ws_status = "❌ 未連線"
+            pipeline_status = "❌ 未運行"
+            strategy_count = "0 個已載入"
+
+        embed.add_field(name="🔌 WebSocket", value=ws_status, inline=False)
+        embed.add_field(name="📊 Pipeline", value=pipeline_status, inline=False)
+        embed.add_field(name="🤖 策略數", value=strategy_count, inline=False)
+
+        # 2. DB Status
+        if store:
+            try:
+                import asyncio
+                counts = await asyncio.to_thread(store.get_table_counts)
+                db_status = f"✅ | ohlcv: {counts['ohlcv']:,} 筆 | trades: {counts['simulated_trades']:,} 筆"
+            except Exception as e:
+                db_status = f"⚠️ 讀取出錯: {e}"
+        else:
+            db_status = "❌ Store 未初始化"
+        
+        embed.add_field(name="💾 DB", value=db_status, inline=False)
+
+        # 3. Uptime
+        if start_time:
+            uptime = datetime.now(timezone.utc) - start_time
+            days = uptime.days
+            hours, remainder = divmod(uptime.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            uptime_str = f"{days}d {hours}h {minutes}m"
+        else:
+            uptime_str = "未知"
+        
+        embed.add_field(name="⏱️ Uptime", value=uptime_str, inline=False)
+        
+        await interaction.followup.send(embed=embed)
+
 class EventContractBot(commands.Bot):
     def __init__(self, channel_id: int, guild_id: int = None):
         intents = discord.Intents.default()
@@ -75,6 +137,8 @@ class EventContractBot(commands.Bot):
         self.target_channel = None
         self.paused = False
         self.store = None # Will be set by caller
+        self.pipeline = None
+        self.start_time = None
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
@@ -83,6 +147,9 @@ class EventContractBot(commands.Bot):
             print(f"Connected to channel: {self.target_channel.name}")
         else:
             print(f"Could not find channel with ID {self.channel_id}")
+        
+        if not self.start_time:
+            self.start_time = datetime.now(timezone.utc)
 
     async def setup_hook(self):
         # Add the Cog
