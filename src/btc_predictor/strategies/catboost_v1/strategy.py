@@ -35,6 +35,10 @@ class CatBoostDirectionStrategy(BaseStrategy):
     @property
     def requires_fitting(self) -> bool:
         return True
+
+    @property
+    def available_timeframes(self) -> List[int]:
+        return list(self.models.keys())
         
     def load_models_from_dir(self, models_dir: Path):
         for file_path in models_dir.glob("catboost_v1_*.cbm"):

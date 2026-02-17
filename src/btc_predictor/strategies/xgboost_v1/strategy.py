@@ -42,6 +42,10 @@ class XGBoostDirectionStrategy(BaseStrategy):
     def requires_fitting(self) -> bool:
         return True
         
+    @property
+    def available_timeframes(self) -> list[int]:
+        return list(self.models.keys())
+        
     def load_models_from_dir(self, models_dir: Path):
         """Load all .pkl files from the directory as models."""
         if not models_dir.exists():

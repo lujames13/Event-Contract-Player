@@ -3,7 +3,8 @@ import signal
 import os
 import sys
 import argparse
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from binance.client import Client
@@ -14,36 +15,35 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 from btc_predictor.data.store import DataStore
 from btc_predictor.data.pipeline import DataPipeline
 from btc_predictor.simulation.settler import settle_pending_trades
-
-
-def check_model_exists(model_path: str) -> bool:
-    """檢查模型檔案是否存在"""
-    path = Path(model_path)
-    if not path.exists():
-        print(f"❌ 模型檔案不存在: {model_path}")
-        print(f"   請先執行: python scripts/train_xgboost_model.py")
-        return False
-    print(f"✅ 找到模型檔案: {model_path}")
-    return True
-
-from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy
-
+from btc_predictor.strategies.registry import StrategyRegistry
 from btc_predictor.utils.config import load_constants
 from btc_predictor.discord_bot.bot import EventContractBot
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger("run_live")
+
 async def settler_loop(store: DataStore, client: Client, bot: EventContractBot = None):
-    """
-    Periodic task to settle pending trades.
-    """
+    """Periodic task to settle pending trades."""
     while True:
         try:
-            # Pass bot to settle_pending_trades so it can notify
-            settle_pending_trades(store, client, bot=bot)
+            # Await the async settle_pending_trades
+            await settle_pending_trades(store, client, bot=bot)
         except Exception as e:
-            print(f"Error in settler_loop: {e}")
-        await asyncio.sleep(60) # Check every minute
+            logger.error(f"Error in settler_loop: {e}", exc_info=True)
+        await asyncio.sleep(60)
 
 async def main():
+    parser = argparse.ArgumentParser(description="BTC Predictor Live System")
+    parser.add_argument("--strategies", type=str, help="Comma-separated list of strategies to load (e.g. lgbm_v2,catboost_v1)")
+    parser.add_argument("--timeframes", type=str, help="Comma-separated list of timeframes to enable (e.g. 10,60)")
+    parser.add_argument("--dry-run", action="store_true", help="Run a single prediction then exit")
+    args = parser.parse_args()
+
     load_dotenv()
     api_key = os.getenv("BINANCE_API_KEY")
     api_secret = os.getenv("BINANCE_API_SECRET")
@@ -53,7 +53,81 @@ async def main():
     # 1. Init DataStore
     store = DataStore()
     
-    # 2. Setup Discord Bot if token available
+    # 2. Discover strategies
+    registry = StrategyRegistry()
+    registry.discover(
+        strategies_dir=Path("src/btc_predictor/strategies"),
+        models_dir=Path("models")
+    )
+
+    all_strategies = registry.list_strategies()
+    
+    # Filter by --strategies
+    if args.strategies:
+        target_names = [s.strip() for s in args.strategies.split(",")]
+        strategies = [s for s in all_strategies if s.name in target_names]
+        # Check if any strategy requested was not found
+        found_names = [s.name for s in strategies]
+        for name in target_names:
+            if name not in found_names:
+                logger.warning(f"Strategy '{name}' requested but not found or could not be loaded.")
+    else:
+        strategies = all_strategies
+
+    # Filter to only strategies that have models
+    strategies = [s for s in strategies if s.available_timeframes]
+    
+    if not strategies:
+        logger.error("No valid strategies with models found. Exiting.")
+        return
+
+    logger.info("="*60)
+    logger.info("Loaded Strategies:")
+    final_strategies = []
+    enabled_timeframes = {} # strategy_name -> list[int]
+    
+    for s in strategies:
+        tfs = s.available_timeframes
+        if args.timeframes:
+            requested_tfs = [int(tf.strip()) for tf in args.timeframes.split(",")]
+            tfs = [tf for tf in tfs if tf in requested_tfs]
+        
+        if tfs:
+            logger.info(f" - {s.name:15} | Timeframes: {tfs}")
+            final_strategies.append(s)
+            enabled_timeframes[s.name] = tfs
+        else:
+            logger.debug(f" - {s.name:15} | No matching timeframes enabled.")
+    
+    if not final_strategies:
+        logger.error("No strategies enabled for the selected timeframes. Exiting.")
+        return
+        
+    logger.info("="*60)
+
+    # 3. Dry-run Mode
+    if args.dry_run:
+        logger.info("Running in DRY-RUN mode.")
+        df = store.get_ohlcv("BTCUSDT", "1m", limit=500)
+        if df.empty:
+            logger.error("No data in DB to perform dry-run. Please fetch some data first.")
+            return
+            
+        for s in final_strategies:
+            tfs = enabled_timeframes[s.name]
+            for tf in tfs:
+                try:
+                    signal = s.predict(df, tf)
+                    logger.info(f"DRY-RUN | {s.name:10} | {tf:4}m | Dir: {signal.direction:6} | Conf: {signal.confidence:.4f} | Price: {signal.current_price}")
+                except Exception as e:
+                    logger.error(f"DRY-RUN | {s.name:10} | {tf:4}m | Error: {e}")
+        logger.info("Dry-run completed.")
+        return
+
+    # 4. Setup Binance Clients
+    client = Client(api_key, api_secret)
+    
+    # 5. Setup Discord Bot
     bot = None
     if discord_token and discord_channel_id:
         guild_id = os.getenv("DISCORD_GUILD_ID")
@@ -63,60 +137,32 @@ async def main():
         )
         bot.store = store
         asyncio.create_task(bot.start(discord_token))
-        print(f"Discord Bot task started. (Guild sync: {'Yes' if guild_id else 'Global'})")
+        logger.info(f"Discord Bot task started.")
     
-    # 3. Setup Binance Clients
-    client = Client(api_key, api_secret)
+    # 6. Setup Pipeline
+    # Pass both strategies and enabled_timeframes context if needed?
+    # Actually, pipeline.py currently triggers ALL timeframes. 
+    # G2.0.2 will fix this in pipeline.py to only trigger available_timeframes.
+    pipeline = DataPipeline("BTCUSDT", ["1m"], final_strategies, store, bot=bot)
     
-    # Initialize strategies with pre-trained models
-    MODEL_PATH = "models/xgboost_v1/10m.pkl"  # 預設使用 10 分鐘模型
-
-    if not check_model_exists(MODEL_PATH):
-        print("\n⚠️  未找到預訓練模型，策略將無法運作")
-        print("   1. 執行 'python scripts/train_xgboost_model.py' 訓練模型")
-        print("   2. 或者註解掉此策略的初始化\n")
-        exit(1)
-
-    print(f"🤖 載入 XGBoost 策略（模型: {MODEL_PATH}）")
-    xgb_strategy = XGBoostDirectionStrategy(model_path=MODEL_PATH)
-
-    strategies = [xgb_strategy]
-    
-    # 5. Setup Pipeline
-    constants = load_constants()
-    symbol = "BTCUSDT"
-    intervals = ["1m"]
-    
-    # Pass bot to pipeline so it can send signals
-    pipeline = DataPipeline(symbol, intervals, strategies, store, bot=bot)
-    
-    # 6. Handle Shutdown
+    # 7. Handle Shutdown
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
     
-    print("Starting real-time prediction system...")
-    print("\n" + "="*60)
-    print("即時預測系統啟動")
-    print("="*60)
-    print(f"時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"監控商品: BTCUSDT")
-    print(f"監控時間框架: 1m")
-    print("="*60 + "\n")
-
     def shutdown():
-        print("Shutting down...")
+        logger.info("Shutting down...")
         stop_event.set()
         
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)
         
-    # 7. Run tasks
+    # 8. Run tasks
     tasks = [
         asyncio.create_task(pipeline.start()),
         asyncio.create_task(settler_loop(store, client, bot=bot))
     ]
     
-    print("Live simulation started. Press Ctrl+C to stop.")
+    logger.info("Live simulation started. Press Ctrl+C to stop.")
     await stop_event.wait()
     
     # Cleanup
@@ -126,7 +172,7 @@ async def main():
     for task in tasks:
         task.cancel()
     
-    print("Live simulation stopped.")
+    logger.info("Live simulation stopped.")
 
 if __name__ == "__main__":
     try:

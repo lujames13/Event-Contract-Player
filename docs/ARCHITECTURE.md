@@ -82,6 +82,7 @@ class SimulatedTrade:
     close_price: float | None = None                    # 到期時 BTC index price（回填）
     result: Literal["win", "lose"] | None = None        # 回填
     pnl: float | None = None                            # 模擬盈虧（回填）
+    features_used: dict = field(default_factory=dict)   # 記錄當時使用的特徵 (JSON)
 ```
 
 PnL 計算邏輯：
@@ -128,6 +129,11 @@ class BaseStrategy(ABC):
     @abstractmethod
     def requires_fitting(self) -> bool:
         """策略是否需要訓練。"""
+        ...
+
+    @property
+    def available_timeframes(self) -> list[int]:
+        """回傳此策略已有訓練模型的 timeframe list。"""
         ...
 
     @abstractmethod
@@ -285,12 +291,15 @@ CREATE TABLE real_trades (
 Binance REST API  ──→  fetch_history.py  ──→  ohlcv table (歷史回填)
 Binance WebSocket ──→  pipeline.py       ──→  ohlcv table (即時更新)
                                           ──→  觸發各策略 predict()
-```
 
+- **WebSocket 重連機制**：採指數退避（Exponential backoffs），初始 5 秒，最高 300 秒。
+- **健康監控**：每 60 秒檢查一次心跳，若超過 3 分鐘未收 K 線則強制重連。
+- **歷史回填**：啟動時自動比對 SQLite 與當前時間，若中斷超過 5 分鐘則透過 REST API 補足缺失 K 線。
 - REST API：用於回填歷史數據（1m/5m/1h/1d）
 - WebSocket：用於即時監聽，K 線收盤時觸發策略 inference
 - 兩者寫入同一張 ohlcv table，用 `(symbol, interval, open_time)` 去重
 - 模組路徑皆位於 `src/btc_predictor/` 下（src layout）
+```
 
 ---
 

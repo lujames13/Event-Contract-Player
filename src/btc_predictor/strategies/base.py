@@ -17,6 +17,14 @@ class BaseStrategy(ABC):
         """策略是否需要訓練。"""
         pass
 
+    @property
+    def available_timeframes(self) -> list[int]:
+        """回傳此策略已有訓練模型的 timeframe list。
+        
+        預設實作回傳空 list。有模型的策略應 override 此 property。
+        """
+        return []
+
     @abstractmethod
     def fit(
         self,

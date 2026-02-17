@@ -34,6 +34,10 @@ class LGBMDirectionStrategyV2(BaseStrategy):
     @property
     def requires_fitting(self) -> bool:
         return True
+
+    @property
+    def available_timeframes(self) -> List[int]:
+        return list(self.models.keys())
         
     def load_models_from_dir(self, models_dir: Path):
         for file_path in models_dir.glob("*.pkl"):

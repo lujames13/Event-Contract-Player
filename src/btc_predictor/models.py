@@ -26,6 +26,7 @@ class SimulatedTrade:
     close_price: float | None = None                    # 到期時 BTC index price（回填）
     result: Literal["win", "lose"] | None = None        # 回填
     pnl: float | None = None                            # 模擬盈虧（回填）
+    features_used: dict = field(default_factory=dict)   # 記錄當時使用的特徵 (JSON)
 
 @dataclass
 class RealTrade:

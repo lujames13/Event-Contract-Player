@@ -31,6 +31,12 @@
 - [x] 該組合的 OOS PnL > 0 (**lgbm_v2 60m: +2.63, catboost_v1 10m: +18.91**)
 - [x] 該組合 OOS 交易筆數 ≥ 500 (**lgbm_v2 60m: 831**) # Note: CatBoost 10m trades: 244
 
+**Gate 1 結論 (2026-02-17 架構師判定 🟡 通過)：**
+- 主要依據：lgbm_v2 60m (DA 54.99%, PnL +2.63, Trades 831)
+- 觀察對象：catboost_v1 10m (DA 56.56%, PnL +18.91, Trades 244 — 未達 ≥500 筆門檻)
+- Fold σ 21.84% 源自每 fold 樣本數過少 (~12 筆/fold)，非模型不穩定
+- PnL margin 極薄 (每筆 +0.003 USDT)，需 live 驗證可持續性
+
 **註記：** 1440m 因現有資料量不足以支撐有意義的 walk-forward 驗證，暫時排除。待資料累積 ≥ 3 年後重新評估。
 
 **數據源限制：** 僅使用 Binance OHLCV（已接入）。多模態特徵（F&G, DXY, CryptoBERT）推遲到 Gate 1 通過後考慮。
@@ -41,10 +47,18 @@
 
 ## Gate 2：Live 系統 + 多模型同步驗證 (當前焦點)
 
-**焦點任務：**
-- [ ] **組合模型實作**：實作 Voting/Stacking Ensemble，整合 LGBM v2 與 CatBoost v1。
-- [ ] **Discord 整合**：對接 Bot 指令，即時查詢 10m/30m/60m 最佳模型的方向與信心度。
-- [ ] **自動化模擬交易**：在 `run_live.py` 中並行執行多個策略的 Paper Trading，每日匯總 PnL。
+**Gate 2 分階段推進：**
+- **Phase 1 — G2.0 Live Pipeline MVP** (🔄 **ACTIVE**):
+  多策略載入 + WebSocket 推理 + Paper trading + 累積樣本
+- **Phase 2 — G2.1 Discord Bot 即時通知**:
+  /predict, /stats 指令 + 自動信號通知 + 到期結算通知
+- **Phase 3 — G2.2 Ensemble (條件性)**:
+  僅在 Phase 1 確認單模型 live 表現穩定後再推進
+
+**Phase 1 里程碑 (進入 Phase 2 的前提)：**
+- [ ] run_live.py 可穩定運行 24 小時無崩潰
+- [ ] lgbm_v2 60m 累積 ≥ 50 筆 live 模擬交易
+- [ ] catboost_v1 10m 累積 ≥ 50 筆 live 模擬交易
 
 ---
 
@@ -95,12 +109,12 @@
 
 ### 2.1 Live 運行框架升級
 
-- [ ] **2.1.1** 多模型同時載入與管理
+- [x] **2.1.1** 多模型同時載入與管理 (G2.0)
   - `run_live.py` 支援從 `models/` 目錄自動掃描並載入所有可用策略
   - 每個策略獨立產生 PredictionSignal，共用 data pipeline
   - 策略 registry：動態註冊，新模型放進目錄即可被載入
 
-- [ ] **2.1.2** Live 模擬交易記錄
+- [x] **2.1.2** Live 模擬交易記錄 (G2.0)
   - 每個策略的每個 timeframe 獨立記錄 SimulatedTrade
   - SQLite 中按 strategy_name 區分
   - 支援回溯查詢每個策略的歷史表現
@@ -128,8 +142,8 @@
 
 ### 2.3 系統穩定性
 
-- [ ] **2.3.1** WebSocket 斷線自動重連（含指數退避）
-- [ ] **2.3.2** 錯誤隔離：單一策略 exception 不影響其他策略運行
+- [x] **2.3.1** WebSocket 斷線自動重連（含指數退避） (G2.0)
+- [x] **2.3.2** 錯誤隔離：單一策略 exception 不影響其他策略運行 (G2.0)
 - [ ] **2.3.3** 健康檢查 endpoint 或 Discord `/health` 指令
 
 ---
@@ -212,4 +226,4 @@
   模擬時存在系統性偏差，需在 Gate 4 真實交易中追蹤。
 - ❓ **backtest engine 中 `lower` 方向的勝負判定**：目前 `is_win = close_price <= open_price`，
   但 Event Contract 規則中平盤對 lower 同樣是 lose。應改為 `is_win = close_price < open_price`。
-  需確認並修正。
+  ✅ **已在 G2.0.0 修正 `settler.py`，回測引擎 `engine.py` 已在 G1.0.2 修正。**
