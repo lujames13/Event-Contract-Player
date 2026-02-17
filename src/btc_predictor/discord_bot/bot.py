@@ -5,7 +5,9 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 import asyncio
-import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}
 
@@ -433,32 +435,39 @@ class EventContractBot(commands.Bot):
         self.start_time = None
 
     async def on_ready(self):
-        print(f'Logged in as {self.user} (ID: {self.user.id})')
+        logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
         self.target_channel = self.get_channel(self.channel_id)
         if self.target_channel:
-            print(f"Connected to channel: {self.target_channel.name}")
+            logger.info(f"Connected to channel: {self.target_channel.name} ({self.channel_id})")
         else:
-            print(f"Could not find channel with ID {self.channel_id}")
+            logger.warning(f"Could not find channel with ID {self.channel_id}")
         
+        logger.info(f"Bot is in {len(self.guilds)} guilds:")
+        for guild in self.guilds:
+            logger.info(f" - {guild.name} (ID: {guild.id})")
+
         if not self.start_time:
             self.start_time = datetime.now(timezone.utc)
 
     async def setup_hook(self):
-        # Add the Cog
-        await self.add_cog(EventContractCog(self))
-        
-        # Sync commands
-        if self.guild_id:
-            guild = discord.Object(id=self.guild_id)
-            # Remove global commands if we are using guild-specific sync to avoid duplicates
-            # (Note: This only affects the bot's view, Discord may still cached global ones for a bit)
-            # self.tree.clear_commands(guild=None) # Optional: uncomment if global commands persist too long
-            print(f"Syncing slash commands to guild {self.guild_id}...")
-            await self.tree.sync(guild=guild)
-        else:
-            print("Syncing slash commands globally (might take some time)...")
-            await self.tree.sync()
-        print("Slash commands synced.")
+        logger.info("Bot setup_hook started.")
+        try:
+            # Add the Cog
+            await self.add_cog(EventContractCog(self))
+            logger.info("EventContractCog added.")
+            
+            # Sync commands
+            if self.guild_id:
+                guild = discord.Object(id=self.guild_id)
+                logger.info(f"Syncing slash commands to guild {self.guild_id}...")
+                self.tree.copy_global_to(guild=guild)
+                await self.tree.sync(guild=guild)
+            else:
+                logger.info("Syncing slash commands globally (might take some time)...")
+                await self.tree.sync()
+            logger.info("Slash commands synced successfully.")
+        except Exception as e:
+            logger.error(f"Error during bot setup_hook: {e}", exc_info=True)
 
     async def send_signal(self, trade):
         """
