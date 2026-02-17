@@ -122,10 +122,11 @@
 
 ### 2.2 Discord Bot 互動功能
 
-- [ ] **2.2.1** `/predict [timeframe]` 指令
+- [x] **2.2.1** `/predict [timeframe]` 指令
   - 用當前市場數據，跑所有已載入模型
   - 回傳每個模型的預測方向 + confidence
   - 格式化為 embed 訊息，直觀顯示
+  - Completed: 2026-02-17
 
 - [x] **2.2.2** `/stats [model_name]` 指令升級
   - 不指定 model_name → 顯示所有模型的摘要對比表

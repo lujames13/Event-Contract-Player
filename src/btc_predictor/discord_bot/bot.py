@@ -4,6 +4,10 @@ from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 from datetime import datetime, timezone
+import asyncio
+import time
+
+CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}
 
 class EventContractCog(commands.Cog):
     def __init__(self, bot):
@@ -25,7 +29,6 @@ class EventContractCog(commands.Cog):
             await interaction.followup.send("DataStore not initialized.", ephemeral=True)
             return
 
-        import asyncio
         try:
             # 1. Get strategy names dynamically
             pipeline = getattr(self.bot, 'pipeline', None)
@@ -246,6 +249,105 @@ class EventContractCog(commands.Cog):
             )
             embed.add_field(name=f"📈 {strategy.name}", value=field_val, inline=False)
 
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="predict", description="手動觸發即時預測")
+    @app_commands.describe(timeframe="Timeframe 分鐘數（10/30/60/1440）")
+    async def predict(self, interaction: discord.Interaction,
+                      timeframe: int = None):
+        try:
+            await interaction.response.defer()
+        except discord.errors.NotFound:
+            return
+
+        pipeline = getattr(self.bot, 'pipeline', None)
+        store = getattr(self.bot, 'store', None)
+
+        if not pipeline:
+            await interaction.followup.send("❌ Pipeline 未連線，無法預測。", ephemeral=True)
+            return
+
+        if not store:
+            await interaction.followup.send("❌ Store 未初始化，無法從 DB 讀取數據。", ephemeral=True)
+            return
+
+        # 1. Get latest OHLCV
+        try:
+            df = await asyncio.to_thread(store.get_latest_ohlcv, "BTCUSDT", "1m", limit=500)
+            if df is None or df.empty:
+                await interaction.followup.send("❌ 資料庫無 K 線數據，無法預測。", ephemeral=True)
+                return
+        except Exception as e:
+            await interaction.followup.send(f"❌ 讀取 OHLCV 出錯: {e}", ephemeral=True)
+            return
+
+        latest_kline_dt = df.index[-1].to_pydatetime()
+        latest_kline_str = latest_kline_dt.strftime("%Y-%m-%d %H:%M UTC")
+        
+        start_time = time.time()
+        results = []
+        
+        # 2. Iterate strategies and timeframes
+        for strategy in pipeline.strategies:
+            tfs = strategy.available_timeframes
+            if timeframe:
+                if timeframe not in tfs:
+                    continue
+                tfs = [timeframe]
+            
+            for tf in tfs:
+                try:
+                    signal = await asyncio.to_thread(strategy.predict, df, tf)
+                    
+                    threshold = CONFIDENCE_THRESHOLDS.get(tf, 0.6)
+                    is_above = signal.confidence >= threshold
+                    
+                    if is_above:
+                        # bet = 5 + (confidence - threshold) / (1.0 - threshold) * 15
+                        bet_amount = 5 + (signal.confidence - threshold) / (1.0 - threshold) * 15
+                        bet_str = f"✅ {bet_amount:.1f} USDT（超過閾值 {threshold}）"
+                    else:
+                        bet_str = f"❌ 不下注（低於閾值 {threshold}）"
+                    
+                    results.append({
+                        "strategy": strategy.name,
+                        "tf": tf,
+                        "direction": signal.direction.upper(),
+                        "confidence": signal.confidence,
+                        "bet": bet_str,
+                        "error": None
+                    })
+                except Exception as e:
+                    results.append({
+                        "strategy": strategy.name,
+                        "tf": tf,
+                        "error": str(e)
+                    })
+
+        if not results:
+            await interaction.followup.send("⚠️ 沒有可預測的策略或 timeframe。", ephemeral=True)
+            return
+
+        # 3. Format Embed
+        duration = time.time() - start_time
+        embed = discord.Embed(
+            title=f"🔮 即時預測（基於最新 K 線: {latest_kline_str}）",
+            color=discord.Color.blue()
+        )
+        
+        for res in results:
+            if res['error']:
+                field_name = f"📈 {res['strategy']} | {res['tf']}m"
+                field_val = f"❌ 推理失敗: {res['error']}"
+            else:
+                field_name = f"📈 {res['strategy']} | {res['tf']}m"
+                field_val = (
+                    f"方向: **{res['direction']}** | 信心度: **{res['confidence']:.4f}**\n"
+                    f"下注建議: {res['bet']}"
+                )
+            embed.add_field(name=field_name, value=field_val, inline=False)
+            
+        embed.set_footer(text=f"⏱️ 推理耗時: {duration:.2f}s")
         await interaction.followup.send(embed=embed)
 
 class EventContractBot(commands.Bot):

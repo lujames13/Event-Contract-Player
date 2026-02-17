@@ -144,13 +144,21 @@ uv run pytest tests/test_bot_predict.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 完成了什麼，修改了哪些檔案 -->
+- 在 `src/btc_predictor/discord_bot/bot.py` 中新增了 `/predict` 指令。
+- 在 `src/btc_predictor/discord_bot/bot.py` 頂部新增了 `CONFIDENCE_THRESHOLDS` 常數。
+- 實作了基於信心度閾值的下注建議計算邏輯。
+- 使用 `asyncio.to_thread` 進行非同步推理，避免阻塞事件循環。
+- 建立了 `tests/test_bot_predict.py` 並通過所有單元測試。
 
 ### 驗收自檢
-<!-- 逐條列出驗收標準的 pass/fail -->
+- [x] 1. `/predict` 指令存在 (Grep 檢查通過)
+- [x] 2. 閾值常數 `CONFIDENCE_THRESHOLDS` 存在 (Grep 檢查通過)
+- [x] 3. 使用 `asyncio.to_thread` 進行推理 (Grep 檢查通過)
+- [x] 4. 測試通過 (`pytest tests/test_bot_predict.py` 全數通過)
 
 ### 遇到的問題
-<!-- 技術障礙、設計疑慮 -->
+- `PredictionSignal` 的初始化需要多個必填參數，在撰寫測試時需確保 mock 資料完整。
+- `/predict` 指令在多個 timeframe 同時執行時，embed 的順序取決於策略定義的 `available_timeframes` 順序。
 
 ---
 
