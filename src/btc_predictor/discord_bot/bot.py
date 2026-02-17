@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone
 import asyncio
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +211,6 @@ class EventContractCog(commands.Cog):
         # 2. DB Status
         if store:
             try:
-                import asyncio
                 counts = await asyncio.to_thread(store.get_table_counts)
                 db_status = f"✅ | ohlcv: {counts['ohlcv']:,} 筆 | trades: {counts['simulated_trades']:,} 筆"
             except Exception as e:
@@ -259,7 +259,6 @@ class EventContractCog(commands.Cog):
             await interaction.followup.send(embed=embed)
             return
 
-        import asyncio
         for strategy in pipeline.strategies:
             summary = await asyncio.to_thread(store.get_strategy_summary, strategy.name)
             

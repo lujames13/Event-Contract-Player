@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 from unittest.mock import AsyncMock, MagicMock
+from discord import app_commands
 from btc_predictor.discord_bot.bot import EventContractCog
 from btc_predictor.models import PredictionSignal
 
@@ -107,7 +108,8 @@ async def test_predict_command_filter_tf():
     interaction.followup.send = AsyncMock()
     
     # Test predict with tf filter
-    await cog.predict.callback(cog, interaction, timeframe=60)
+    choice = app_commands.Choice(name="1 小時", value=60)
+    await cog.predict.callback(cog, interaction, timeframe=choice)
     
     interaction.followup.send.assert_called_once()
     args, kwargs = interaction.followup.send.call_args

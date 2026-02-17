@@ -144,7 +144,7 @@
 
 - [x] **2.2.5** `/help` 指令 + Slash Command UX 改善 (G2.1.5)
   - timeframe 改用 Choice，model 改用 autocomplete
-  - Completed: 2026-02-18
+  - Completed: 2026-02-18 (Fix: NameError 'time' and test regressions)
 
 ### 2.3 系統穩定性
 

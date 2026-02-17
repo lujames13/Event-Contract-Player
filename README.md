@@ -1,95 +1,93 @@
 # Event-Contract-Player
+
 ## 目標
-程式化預測 Binance Event Contract 方向，累積 200+ 筆模擬交易驗證後，透過 Discord Bot 通知手動下單。
+程式化預測 Binance Event Contract 方向，透過多策略 Live 驗證與統計顯著（各策略 200+ 筆交易）後，透過 Discord Bot 進行即時預測與自動化訊號推送，最終實現手動或自動下單。
 
 ## 核心挑戰
 **Event Contract 的二元預測任務**: 預測「N 分鐘後收盤價是否高於開盤價」，與傳統價格預測/回歸任務本質不同。
 
 ## 盈虧平衡要求
-- **10分鐘**: 賠率 1.80 → 勝率需 >55.6% (閾值 0.606)
-- **30分鐘**: 賠率 1.85 → 勝率需 >54.1% (閾值 0.591)
-- **60分鐘**: 賠率 1.85 → 勝率需 >54.1% (閾值 0.591)
-- **1天**: 賠率 1.85 → 勝率需 >54.1% (閾值 0.591)
+| Timeframe | 賠率 | 盈虧平衡勝率 | 信心度下注閾值 (+5% 邊際) |
+|-----------|------|--------------|---------------------------|
+| 10 分鐘   | 1.80 | 55.6%        | 0.606                     |
+| 30 分鐘   | 1.85 | 54.1%        | 0.591                     |
+| 60 分鐘   | 1.85 | 54.1%        | 0.591                     |
+| 1 天      | 1.85 | 54.1%        | 0.591                     |
 
-> 信心度低於閾值的預測不下注
+> 信心度低於閾值的預測不建議下注。
 
-## 開發策略：MVP-First 深度優先
+## 開發策略：Gate-based 推進 (2026-02-15 起)
 
-**設計原則變更 (2025-02-14)**: 從「先做完所有模型」改為「用一個模型打通全鏈路」
-- 目的：儘早驗證端到端可行性
-- Phase 1: XGBoost 基線模型
-- Phase 1.5: 回測框架 + 模擬倉 + Discord Bot (XGBoost 跑通)
-- Phase 2: 水平擴展 (N-BEATS, FreqAI, 多模態特徵)
-- Phase 3: 真實交易驗證
+1. **Gate 0: 基礎設施就緒** — ✅ **PASSED** (2026-02-14)
+2. **Gate 1: 模型實驗池成熟** — ✅ **PASSED** (2026-02-17)
+3. **Gate 2: Live 系統 + 多模型同步驗證** — 🔄 **ACTIVE** (當前階段)
+4. **Gate 3: 模擬交易統計顯著** — ⏳ 待進入
+5. **Gate 4: 真實交易驗證** — ⏳ 待進入
 
-## 當前狀態 (2025-02-14)
+## 當前狀態 (2026-02-18)
 
 ### ✅ 已完成
-- 專案結構與環境 (Python 3.12 + uv)
-- Binance 歷史數據抓取 + SQLite 儲存
-- **Event Contract Label 生成邏輯** (核心差異點)
-- **XGBoost 特徵工程** (OHLCV + 技術指標)
-- **XGBoost 模型訓練** + 三時間框架模型產生
-- **BaseStrategy 介面** + PredictionSignal 輸出
-- **風控模組** (動態下注 + 停損機制)
-- **Walk-forward 回測引擎** (防止前視偏差)
-- **Discord Bot 骨架** (指令系統 + 訊息發送)
-- **即時運行框架** (WebSocket + 模型載入)
+- **基礎設施**: `uv` 環境、Binance 數據管線、SQLite (WAL mode)。
+- **回測引擎**: 支援平行化處理的 Walk-forward 回測，驗證防止前視偏差。
+- **多模型架構**: 支援 XGBoost, LightGBM, CatBoost 同時運行。
+- **Gate 1 達成**: `lgbm_v2` (60m) DA 54.99%, `catboost_v1` (10m) DA 56.56% 通過 OOS 驗證。
+- **Live Pipeline MVP**: 多策略同時載入、WebSocket 即時推理、非同步效能優化。
+- **Discord Bot UX**: 支援 `/help`, `/predict`, `/stats`, `/models` 指令，具備 Autocomplete 與 Choice 下拉選單。
+- **自動通知**: 具備即時預測信號推送與結算結果反饋功能。
 
 ### 🔄 進行中
-- Phase 1.6: 端到端驗證 (即時預測 1 小時無崩潰運行)
+- **Gate 2 Phase 2**: Discord Bot 智慧指令優化與系統穩定性監測。
+- **數據累積**: 累積各模型 Live 運行下的模擬交易數據（目標每組合 ≥ 200 筆）。
 
 ### 📋 下一步
-- 72 小時壓力測試 → Phase 2 水平擴展
+- 實作 Ensemble / Stacking 模型。
+- 72 小時穩定性監控與系統錯誤隔離強化。
 
 ## 技術棧
 
 ### 預測模型
-- **XGBoost**: 方向分類 (所有時間框架)
-- **N-BEATS Perceiver** (Phase 2): 基於 ICLR 論文的時序預測
-- **FreqAI** (Phase 2): 生產級交易框架的信號提取
-- **CryptoBERT** (Phase 2): 情緒分析 (inference only, 2GB VRAM)
+- **Tree-based**: XGBoost, LightGBM, CatBoost (目前主力，已穩定)。
+- **Neural**: MLP (目前 DA ~50%, 迭代中)。
+- **Future**: N-BEATS, Ensemble / Stacking (Gate 2 後期計畫)。
 
 ### 特徵工程
-- **技術指標**: RSI, MACD, Bollinger Bands, ATR (ta-lib)
-- **多模態** (Phase 2): Fear & Greed Index, DXY 美元指數, 鏈上數據
-- **特徵選擇** (Phase 2): Boruta + SHAP 可解釋性
+- **技術指標**: RSI, MACD, Bollinger Bands, ATR (ta-lib)。
+- **高階特徵**: 時間循環編碼、波動率特徵、成交量動能。
+- **多模態 (Planned)**: CryptoBERT 情緒分析、Fear & Greed Index、DXY 指數。
 
 ### 基礎設施
-- **數據**: Binance WebSocket + REST API → SQLite (WAL mode)
-- **回測**: Walk-forward 驗證 (7 fold, 每折 ~1.5 年)
-- **風控**: 凱利公式 + 動態下注 (5-20 USDT)
-- **通知**: Discord Bot (半自動交易)
+- **語言**: Python 3.12 + `uv`
+- **數據**: Binance WebSocket (即時) + REST API (補洞/歷史)
+- **資料庫**: SQLite (WAL 模式，支援高併發讀取)
+- **通知**: Discord Bot (Slash Commands + Rich Embeds)
 
-### 數據流
+## 數據流
 ```
-WebSocket (即時) → SQLite → 特徵工程 → XGBoost → 風控檢查 → Discord 通知
-                    ↑
-              REST API (歷史回補)
+[WebSocket Market Data] ──▶ [SQLite Data Pipeline] ──▶ [Feature Engineering]
+                                                            │
+    ┌───────────────────────────────────────────────────────┘
+    ▼
+[Strategy Registry] ──▶ [Multi-Model Inference] ──▶ [Risk Control Check] ──▶ [Discord Notification]
 ```
 
 ## 風險管理
-- 下注範圍: 5-20 USDT (信心度線性映射)
-- 每日最大虧損: 50 USDT
-- 連敗保護: 8 筆連敗 → 暫停 1 小時
-- 每日交易上限: 30 筆
+- **下注範圍**: 5-20 USDT (基於信心度的線性映射)。
+- **凱利公式**: 預計於 Gate 2.2 導入。
+- **熔斷機制**: 
+  - 每日最大虧損限制 (50 USDT)。
+  - 連敗保護 (8 連敗暫停 1 小時)。
+  - 每日交易筆數上限 (30 筆)。
 
-## 硬體約束
-- GPU VRAM < 8GB (排除大型 Transformer 微調)
-- 推理延遲 < 1 秒 (高頻交易要求)
+## 硬體與性能約束
+- **GPU**: NVIDIA < 8GB VRAM。
+- **延遲**: 即時推理需在下一根 K 線開盤前完成 (< 1 秒)。
 
-## 關鍵約束與決策
-- **無官方 API**: Binance Event Contract 無程式化下單 API
-- **Label 生成**: 核心邏輯已實現，所有模型共用
-- **評估指標**: 方向準確率 (DA) 優先於 RMSE/MAE
-- **驗證方法**: Walk-forward 防止前視偏差
+## 文檔導覽
+- `docs/PROGRESS.md`: **單一事實來源 (SSOT)**，詳載 Gate 進度。
+- `docs/MODEL_ITERATIONS.md`: 詳盡的模型實驗記錄與回測數據。
+- `docs/ARCHITECTURE.md`: 系統架構定義與模組間介面契約。
+- `docs/DECISIONS.md`: 關鍵技術決策日誌。
+- `AGENTS.md`: Coding Agent 操作與規範守則。
 
-## 文檔結構
-- `AGENTS.md`: AI agent 開工指南
-- `PROGRESS.md`: **進度追蹤 (Single Source of Truth)**
-- `DECISIONS.md`: 不可變技術決策
-- `ARCHITECTURE.md`: 系統架構 + 介面契約
-- `ROADMAP.md`: 高層規劃參考
-
-## 未來方向
-策略穩定後，計畫透過 Android 模擬器 UI 自動化實現全自動下單 (Phase 3 之後另行規劃)。
+---
+*Last updated: 2026-02-18*
