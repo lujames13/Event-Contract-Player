@@ -48,8 +48,9 @@
 ## Gate 2：Live 系統 + 多模型同步驗證 (當前焦點)
 
 **Gate 2 分階段推進：**
-- **Phase 1 — G2.0 Live Pipeline MVP** (🔄 **ACTIVE**):
-  多策略載入 + WebSocket 推理 + Paper trading + 累積樣本
+- **Phase 1 — G2.0 Live Pipeline MVP**: [✅] PASS (2024-02-17)
+  - 多策略載入 + WebSocket 推理 + Paper trading + 累積樣本
+  - Notes: SQLite WAL enabled, async offloaded, Multi-strategy verified.
 - **Phase 2 — G2.1 Discord Bot 即時通知**:
   /predict, /stats 指令 + 自動信號通知 + 到期結算通知
 - **Phase 3 — G2.2 Ensemble (條件性)**:
