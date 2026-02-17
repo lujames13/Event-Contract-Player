@@ -127,10 +127,10 @@
   - 回傳每個模型的預測方向 + confidence
   - 格式化為 embed 訊息，直觀顯示
 
-- [ ] **2.2.2** `/stats [model_name]` 指令升級
+- [x] **2.2.2** `/stats [model_name]` 指令升級
   - 不指定 model_name → 顯示所有模型的摘要對比表
   - 指定 model_name → 顯示該模型的詳細統計（DA、PnL、校準、drawdown）
-  - 支援按 timeframe 篩選
+  - 支援按 timeframe 篩選 (Completed: 2026-02-17)
 
 - [x] **2.2.3** `/models` 指令
   - 列出所有已載入模型

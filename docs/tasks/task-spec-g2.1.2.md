@@ -1,6 +1,6 @@
 # Task Spec G2.1.2 — `/stats` 升級：多策略對比 + 累計統計
 
-<!-- status: draft -->
+<!-- status: completed -->
 <!-- created: 2026-02-17 -->
 <!-- architect: Claude Opus (Chat Project) -->
 
@@ -231,13 +231,18 @@ uv run pytest tests/test_bot_stats.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 完成了什麼，修改了哪些檔案 -->
+- 修改 `src/btc_predictor/data/store.py`: 新增 `get_strategy_detail()` 支援細節統計與 drawdown 計算。
+- 修改 `src/btc_predictor/discord_bot/bot.py`: 改寫 `/stats` 支援 `model` 與 `timeframe` 參數，動態生成策略列表，移除 hardcoded 名稱。
+- 新增 `tests/test_bot_stats.py`: 包含 DataStore 邏輯測試與 Cog 指令 Mock 測試。
 
 ### 驗收自檢
-<!-- 逐條列出驗收標準的 pass/fail -->
+- [x] `/stats` 支援 optional parameters (`model`, `timeframe`)
+- [x] `DataStore.get_strategy_detail` 方法已實作
+- [x] Hardcoded 策略名稱已從 `bot.py` 移除
+- [x] `uv run pytest tests/test_bot_stats.py -v` 通過
 
 ### 遇到的問題
-<!-- 技術障礙、設計疑慮 -->
+- `get_daily_stats()` 僅回傳 `daily_loss` (負值加總)，不包含正值 PnL。為了符合 Spec 中顯示 `PnL: +0.45` 的需求，在 `bot.py` 中額外增加了對當日 PnL 的查詢邏輯，而非僅依賴 `get_daily_stats()`。
 
 ---
 

@@ -9,51 +9,124 @@ class EventContractCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="stats", description="顯示當日模擬交易統計數據")
-    async def stats(self, interaction: discord.Interaction):
+    @app_commands.command(name="stats", description="顯示交易統計")
+    @app_commands.describe(
+        model="策略名稱（留空顯示所有）",
+        timeframe="Timeframe 分鐘數（10/30/60/1440）"
+    )
+    async def stats(self, interaction: discord.Interaction,
+                    model: str = None, timeframe: int = None):
         try:
             await interaction.response.defer()
         except discord.errors.NotFound:
-            return # Interaction already expired
+            return
 
         if not self.bot.store:
             await interaction.followup.send("DataStore not initialized.", ephemeral=True)
             return
-        
-        try:
-            import asyncio
-            date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            
-            # Since we could have multiple strategies, we show summary for active ones
-            # For now, let's just get stats for lgbm_v2 and catboost_v1 if they exist
-            strategies = ["lgbm_v2", "catboost_v1", "xgboost_v1"]
-            
-            embed = discord.Embed(title=f"📊 當日統計 ({date_str} UTC)", color=discord.Color.gold())
-            
-            for strategy_name in strategies:
-                try:
-                    daily_stats = await asyncio.to_thread(self.bot.store.get_daily_stats, strategy_name, date_str)
-                    if daily_stats.get('daily_trades', 0) > 0:
-                        field_val = (
-                            f"交易數: {daily_stats.get('daily_trades', 0)}\n"
-                            f"PnL: {daily_stats.get('daily_loss', 0.0):+.2f} USDT\n"
-                            f"連敗: {daily_stats.get('consecutive_losses', 0)}"
-                        )
-                        embed.add_field(name=f"🔹 {strategy_name}", value=field_val, inline=True)
-                except Exception:
-                    continue
 
-            embed.add_field(name="系統狀態", value="⏸️ 已暫停" if self.bot.paused else "✅ 運行中", inline=False)
-            
-            if not embed.fields:
-                embed.description = "今日尚無交易紀錄。"
+        import asyncio
+        try:
+            # 1. Get strategy names dynamically
+            pipeline = getattr(self.bot, 'pipeline', None)
+            strategy_names = []
+            if pipeline and pipeline.strategies:
+                strategy_names = [s.name for s in pipeline.strategies]
+            else:
+                # Fallback to DB
+                with self.bot.store._get_connection() as conn:
+                    rows = conn.execute("SELECT DISTINCT strategy_name FROM simulated_trades").fetchall()
+                    strategy_names = [r[0] for r in rows]
+
+            if not strategy_names:
+                await interaction.followup.send("目前尚無交易紀錄或載入策略。", ephemeral=True)
+                return
+
+            if model:
+                # Detailed mode for a specific model
+                if model not in strategy_names:
+                    await interaction.followup.send(f"❌ 找不到策略: {model}", ephemeral=True)
+                    return
                 
-            await interaction.followup.send(embed=embed)
+                detail = await asyncio.to_thread(self.bot.store.get_strategy_detail, model, timeframe)
+                date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                daily_stats = await asyncio.to_thread(self.bot.store.get_daily_stats, model, date_str)
+                
+                # Query today's PnL separately since get_daily_stats only gives loss
+                with self.bot.store._get_connection() as conn:
+                    daily_pnl = conn.execute(
+                        "SELECT COALESCE(SUM(pnl), 0) FROM simulated_trades WHERE strategy_name = ? AND open_time LIKE ? AND result IS NOT NULL",
+                        (model, f"{date_str}%")
+                    ).fetchone()[0]
+                
+                title = f"📊 {model} 詳細統計"
+                if timeframe:
+                    title += f" ({timeframe}m)"
+                
+                embed = discord.Embed(title=title, color=discord.Color.blue())
+                embed.description = (
+                    f"累計交易:   {detail['settled'] + detail['pending']} 筆（已結算 {detail['settled']} 筆）\n"
+                    f"方向準確率: **{detail['da']:.1%}**\n"
+                    f"  Higher:   {detail['higher_da']:.1%} ({detail['higher_wins']}/{detail['higher_total']})\n"
+                    f"  Lower:    {detail['lower_da']:.1%} ({detail['lower_wins']}/{detail['lower_total']})\n"
+                    f"總 PnL:     **{detail['total_pnl']:+.2f}** USDT\n"
+                    f"最大回撤:   **{detail['max_drawdown']:.2f}** USDT\n"
+                    f"今日交易:   {daily_stats['daily_trades']} 筆 | PnL: {daily_pnl:+.2f}\n"
+                    f"連敗:       {daily_stats['consecutive_losses']}"
+                )
+                await interaction.followup.send(embed=embed)
+            
+            else:
+                # Summary mode (Table)
+                embed = discord.Embed(title="📊 交易統計摘要", color=discord.Color.gold())
+                header = "策略           | TF  | 交易 | DA     | PnL\n"
+                sep = "─────────────────\n"
+                rows_text = []
+                
+                total_trades = 0
+                total_wins = 0
+                total_settled = 0
+                total_pnl = 0.0
+
+                # Determine which (name, tf) pairs to show
+                pairs_to_show = []
+                with self.bot.store._get_connection() as conn:
+                    query = "SELECT DISTINCT strategy_name, timeframe_minutes FROM simulated_trades"
+                    if timeframe:
+                        query += " WHERE timeframe_minutes = ?"
+                        db_rows = conn.execute(query, (timeframe,)).fetchall()
+                    else:
+                        db_rows = conn.execute(query).fetchall()
+                    pairs_to_show = db_rows
+
+                # Sort by name, then tf
+                pairs_to_show.sort(key=lambda x: (x[0], x[1]))
+
+                for name, tf in pairs_to_show:
+                    s = await asyncio.to_thread(self.bot.store.get_strategy_detail, name, tf)
+                    if s['settled'] == 0 and s['pending'] == 0:
+                        continue
+                    
+                    tf_str = f"{tf}m"
+                    row = f"{name:<14} | {tf_str:>3} | {s['settled']+s['pending']:>4} | {s['da']:>5.1%} | {s['total_pnl']:+.2f}\n"
+                    rows_text.append(row)
+                    
+                    total_trades += (s['settled'] + s['pending'])
+                    total_wins += s['wins']
+                    total_settled += s['settled']
+                    total_pnl += s['total_pnl']
+
+                if not rows_text:
+                    embed.description = "尚無符合條件的交易紀錄。"
+                else:
+                    avg_da = total_wins / total_settled if total_settled > 0 else 0.0
+                    footer = f"總計           |     | {total_trades:>4} | {avg_da:>5.1%} | {total_pnl:+.2f}"
+                    embed.description = f"```\n{header}{sep}{''.join(rows_text)}{sep}{footer}\n```"
+                
+                await interaction.followup.send(embed=embed)
+
         except Exception as e:
-            try:
-                await interaction.followup.send(f"❌ 取得統計數據時出錯: {e}", ephemeral=True)
-            except Exception:
-                pass
+            await interaction.followup.send(f"❌ 取得統計數據時出錯: {e}", ephemeral=True)
 
     @app_commands.command(name="pause", description="暫停模擬交易訊號推送")
     async def pause(self, interaction: discord.Interaction):

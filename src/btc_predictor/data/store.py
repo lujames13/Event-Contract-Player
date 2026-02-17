@@ -206,6 +206,74 @@ class DataStore:
             "total_pnl": pnl
         }
 
+    def get_strategy_detail(self, strategy_name: str, timeframe: int = None) -> dict:
+        """回傳指定策略的詳細統計，包含方向分拆和 drawdown。"""
+        base_where = "WHERE strategy_name = ? AND result IS NOT NULL"
+        params = [strategy_name]
+        if timeframe:
+            base_where += " AND timeframe_minutes = ?"
+            params.append(timeframe)
+
+        with self._get_connection() as conn:
+            row = conn.execute(f"""
+                SELECT COUNT(*) as settled,
+                    COALESCE(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0) as wins,
+                    COALESCE(SUM(pnl), 0) as total_pnl
+                FROM simulated_trades {base_where}
+            """, params).fetchone()
+
+            higher = conn.execute(f"""
+                SELECT COUNT(*),
+                    COALESCE(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0)
+                FROM simulated_trades {base_where} AND direction = 'higher'
+            """, params).fetchone()
+
+            lower = conn.execute(f"""
+                SELECT COUNT(*),
+                    COALESCE(SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END), 0)
+                FROM simulated_trades {base_where} AND direction = 'lower'
+            """, params).fetchone()
+
+            pending_where = "WHERE strategy_name = ? AND result IS NULL"
+            pending_params = [strategy_name]
+            if timeframe:
+                pending_where += " AND timeframe_minutes = ?"
+                pending_params.append(timeframe)
+            pending = conn.execute(f"""
+                SELECT COUNT(*) FROM simulated_trades {pending_where}
+            """, pending_params).fetchone()[0]
+
+            pnl_rows = conn.execute(f"""
+                SELECT pnl FROM simulated_trades {base_where}
+                ORDER BY open_time ASC
+            """, params).fetchall()
+
+        settled, wins, total_pnl = row
+        da = wins / settled if settled > 0 else 0.0
+        h_total, h_wins = higher
+        l_total, l_wins = lower
+        higher_da = h_wins / h_total if h_total > 0 else 0.0
+        lower_da = l_wins / l_total if l_total > 0 else 0.0
+
+        cumulative = peak = max_dd = 0.0
+        for (p,) in pnl_rows:
+            cumulative += p
+            if cumulative > peak:
+                peak = cumulative
+            dd = peak - cumulative
+            if dd > max_dd:
+                max_dd = dd
+
+        return {
+            "settled": settled, "pending": pending,
+            "wins": wins, "da": da,
+            "higher_total": h_total, "higher_wins": h_wins,
+            "higher_da": higher_da,
+            "lower_total": l_total, "lower_wins": l_wins,
+            "lower_da": lower_da,
+            "total_pnl": total_pnl, "max_drawdown": max_dd,
+        }
+
     def get_daily_stats(self, strategy_name: str, date_str: str) -> dict:
         """
         Get daily statistics for risk control.
