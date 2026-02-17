@@ -142,6 +142,10 @@
   - 包含：策略名稱、方向、confidence、timeframe、當前價格
   - 到期時自動發送結果通知：是否獲勝 + PnL
 
+- [x] **2.2.5** `/help` 指令 + Slash Command UX 改善 (G2.1.5)
+  - timeframe 改用 Choice，model 改用 autocomplete
+  - Completed: 2026-02-18
+
 ### 2.3 系統穩定性
 
 - [x] **2.3.1** WebSocket 斷線自動重連（含指數退避） (G2.0)

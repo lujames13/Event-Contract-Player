@@ -9,17 +9,42 @@ import time
 
 CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}
 
+TIMEFRAME_CHOICES = [
+    app_commands.Choice(name="10 分鐘", value=10),
+    app_commands.Choice(name="30 分鐘", value=30),
+    app_commands.Choice(name="1 小時", value=60),
+    app_commands.Choice(name="1 天", value=1440),
+]
+
 class EventContractCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def model_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        """動態回傳已載入的策略名稱。"""
+        pipeline = getattr(self.bot, 'pipeline', None)
+        if not pipeline or not pipeline.strategies:
+            return []
+        
+        names = [s.name for s in pipeline.strategies]
+        # 過濾：如果使用者已輸入部分文字，只顯示匹配的
+        if current:
+            names = [n for n in names if current.lower() in n.lower()]
+        
+        return [app_commands.Choice(name=n, value=n) for n in names[:25]]
+
     @app_commands.command(name="stats", description="顯示交易統計")
     @app_commands.describe(
-        model="策略名稱（留空顯示所有）",
-        timeframe="Timeframe 分鐘數（10/30/60/1440）"
+        model="選擇策略（留空顯示所有）",
+        timeframe="選擇時間框架（留空顯示所有）"
     )
+    @app_commands.choices(timeframe=TIMEFRAME_CHOICES)
     async def stats(self, interaction: discord.Interaction,
-                    model: str = None, timeframe: int = None):
+                    model: str = None, 
+                    timeframe: app_commands.Choice[int] = None):
+        tf_value = timeframe.value if timeframe else None
         try:
             await interaction.response.defer()
         except discord.errors.NotFound:
@@ -51,7 +76,7 @@ class EventContractCog(commands.Cog):
                     await interaction.followup.send(f"❌ 找不到策略: {model}", ephemeral=True)
                     return
                 
-                detail = await asyncio.to_thread(self.bot.store.get_strategy_detail, model, timeframe)
+                detail = await asyncio.to_thread(self.bot.store.get_strategy_detail, model, tf_value)
                 date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 daily_stats = await asyncio.to_thread(self.bot.store.get_daily_stats, model, date_str)
                 
@@ -63,8 +88,8 @@ class EventContractCog(commands.Cog):
                     ).fetchone()[0]
                 
                 title = f"📊 {model} 詳細統計"
-                if timeframe:
-                    title += f" ({timeframe}m)"
+                if tf_value:
+                    title += f" ({tf_value}m)"
                 
                 embed = discord.Embed(title=title, color=discord.Color.blue())
                 embed.description = (
@@ -95,9 +120,9 @@ class EventContractCog(commands.Cog):
                 pairs_to_show = []
                 with self.bot.store._get_connection() as conn:
                     query = "SELECT DISTINCT strategy_name, timeframe_minutes FROM simulated_trades"
-                    if timeframe:
+                    if tf_value:
                         query += " WHERE timeframe_minutes = ?"
-                        db_rows = conn.execute(query, (timeframe,)).fetchall()
+                        db_rows = conn.execute(query, (tf_value,)).fetchall()
                     else:
                         db_rows = conn.execute(query).fetchall()
                     pairs_to_show = db_rows
@@ -130,6 +155,10 @@ class EventContractCog(commands.Cog):
 
         except Exception as e:
             await interaction.followup.send(f"❌ 取得統計數據時出錯: {e}", ephemeral=True)
+
+    @stats.autocomplete('model')
+    async def stats_model_autocomplete(self, interaction: discord.Interaction, current: str):
+        return await self.model_autocomplete(interaction, current)
 
     @app_commands.command(name="pause", description="暫停模擬交易訊號推送")
     async def pause(self, interaction: discord.Interaction):
@@ -252,9 +281,11 @@ class EventContractCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="predict", description="手動觸發即時預測")
-    @app_commands.describe(timeframe="Timeframe 分鐘數（10/30/60/1440）")
+    @app_commands.describe(timeframe="選擇預測時間框架")
+    @app_commands.choices(timeframe=TIMEFRAME_CHOICES)
     async def predict(self, interaction: discord.Interaction,
-                      timeframe: int = None):
+                      timeframe: app_commands.Choice[int] = None):
+        tf_value = timeframe.value if timeframe else None
         try:
             await interaction.response.defer()
         except discord.errors.NotFound:
@@ -290,10 +321,10 @@ class EventContractCog(commands.Cog):
         # 2. Iterate strategies and timeframes
         for strategy in pipeline.strategies:
             tfs = strategy.available_timeframes
-            if timeframe:
-                if timeframe not in tfs:
+            if tf_value:
+                if tf_value not in tfs:
                     continue
-                tfs = [timeframe]
+                tfs = [tf_value]
             
             for tf in tfs:
                 try:
@@ -349,6 +380,44 @@ class EventContractCog(commands.Cog):
             
         embed.set_footer(text=f"⏱️ 推理耗時: {duration:.2f}s")
         await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="help", description="顯示所有可用指令")
+    async def help_command(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="📖 Event Contract Bot — 指令總覽",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="🔍 觀測",
+            value=(
+                "`/health` — 系統健康檢查（WebSocket、Pipeline、DB）\n"
+                "`/models` — 已載入模型及 live 表現"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 交易",
+            value=(
+                "`/predict [timeframe]` — 即時預測（可選時間框架）\n"
+                "`/stats [model] [timeframe]` — 交易統計摘要或詳細"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="⚙️ 控制",
+            value=(
+                "`/pause` — 暫停訊號推送\n"
+                "`/resume` — 恢復訊號推送"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text="💡 所有參數都可從下拉選單選取，不需手動輸入")
+        
+        await interaction.response.send_message(embed=embed)
 
 class EventContractBot(commands.Bot):
     def __init__(self, channel_id: int, guild_id: int = None):
