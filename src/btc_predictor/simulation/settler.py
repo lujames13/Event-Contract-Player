@@ -2,13 +2,42 @@ import pandas as pd
 import asyncio
 import logging
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from btc_predictor.data.store import DataStore
 from btc_predictor.utils.config import load_constants
 from btc_predictor.models import SimulatedTrade
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+async def _get_close_price(store: DataStore, expiry_ms: int, client=None) -> Any:
+    """Helper to fetch 1m close price from SQLite or Binance API."""
+    # 1. Try SQLite first
+    df_price = await asyncio.to_thread(
+        store.get_ohlcv, "BTCUSDT", "1m", start_time=expiry_ms, end_time=expiry_ms
+    )
+    
+    if not df_price.empty:
+        return float(df_price['close'].iloc[0])
+        
+    # 2. Try Binance REST API if not in SQLite
+    if client:
+        try:
+            if hasattr(client, 'get_klines') and asyncio.iscoroutinefunction(client.get_klines):
+                klines = await client.get_klines(
+                    symbol="BTCUSDT", interval="1m", startTime=expiry_ms, limit=1
+                )
+            else:
+                klines = await asyncio.to_thread(
+                    client.get_klines, symbol="BTCUSDT", interval="1m", startTime=expiry_ms, limit=1
+                )
+            
+            if klines:
+                return float(klines[0][4])
+        except Exception as e:
+            logger.error(f"Error fetching price from Binance for {expiry_ms}: {e}")
+            
+    return None
 
 async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
     """
@@ -36,54 +65,16 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
             logger.info(f"Settling trade {row['id']} (expiry: {expiry_str})...")
             
             expiry_ms = int(expiry_dt.timestamp() * 1000)
-            
-            # 1. Try SQLite first
-            # We look for a 1m candle starting at the exactly expiry minute
-            df_price = await asyncio.to_thread(
-                store.get_ohlcv, "BTCUSDT", "1m", start_time=expiry_ms, end_time=expiry_ms
-            )
-            
-            close_price = None
-            if not df_price.empty:
-                close_price = float(df_price['close'].iloc[0])
-                logger.debug(f"Found price in SQLite for trade {row['id']}")
-                
-            # 2. Try Binance REST API if not in SQLite
-            if close_price is None and client:
-                try:
-                    # Determine if client is async or needs to_thread
-                    if hasattr(client, 'get_klines') and asyncio.iscoroutinefunction(client.get_klines):
-                        klines = await client.get_klines(
-                            symbol="BTCUSDT",
-                            interval="1m",
-                            startTime=expiry_ms,
-                            limit=1
-                        )
-                    else:
-                        # Fallback for sync client
-                        klines = await asyncio.to_thread(
-                            client.get_klines,
-                            symbol="BTCUSDT",
-                            interval="1m",
-                            startTime=expiry_ms,
-                            limit=1
-                        )
-                    
-                    if klines:
-                        # kline format: [startTime, open, high, low, close, volume, closeTime, ...]
-                        close_price = float(klines[0][4])
-                        logger.info(f"Retrieved price from Binance REST API for trade {row['id']}: {close_price}")
-                except Exception as e:
-                    logger.error(f"Error fetching price from Binance for trade {row['id']}: {e}")
+            close_price = await _get_close_price(store, expiry_ms, client)
                     
             if close_price is not None:
                 open_price = float(row['open_price'])
                 direction = row['direction']
                 
                 if direction == "higher":
-                    is_win = close_price > open_price   # 嚴格大於
+                    is_win = close_price > open_price
                 else:
-                    is_win = close_price < open_price   # 嚴格小於
+                    is_win = close_price < open_price
                     
                 result = "win" if is_win else "lose"
                 
@@ -122,3 +113,59 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
                 logger.warning(f"Could not find price for {row['id']} at {expiry_str}. Will retry.")
         except Exception as e:
             logger.error(f"Unexpected error settling trade {row['id']}: {e}", exc_info=True)
+
+async def settle_pending_signals(store: DataStore, client=None, max_age_hours: int = 24) -> int:
+    """
+    結算所有已到期但未結算的 prediction signals。
+    """
+    pending = await asyncio.to_thread(store.get_unsettled_signals)
+    if pending.empty:
+        return 0
+        
+    now = datetime.now(timezone.utc)
+    max_age_dt = now - timedelta(hours=max_age_hours)
+    count = 0
+    
+    for _, row in pending.iterrows():
+        try:
+            expiry_str = row['expiry_time']
+            expiry_dt = datetime.fromisoformat(expiry_str)
+            if expiry_dt.tzinfo is None:
+                expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+                
+            if now < expiry_dt:
+                continue
+                
+            if expiry_dt < max_age_dt:
+                continue
+
+            expiry_ms = int(expiry_dt.timestamp() * 1000)
+            close_price = await _get_close_price(store, expiry_ms, client)
+            
+            if close_price is not None:
+                open_price = float(row['current_price'])
+                direction = row['direction']
+                
+                # Determine actual_direction
+                if close_price > open_price:
+                    actual_direction = 'higher'
+                elif close_price < open_price:
+                    actual_direction = 'lower'
+                else:
+                    actual_direction = 'draw'
+                
+                # Determine if correct
+                # 平盤算錯，與 simulated_trades 一致
+                is_correct = (direction == actual_direction)
+                
+                await asyncio.to_thread(
+                    store.settle_signal, row['id'], actual_direction, close_price, is_correct
+                )
+                count += 1
+                logger.debug(f"Signal {row['id']} settled: actual={actual_direction}, correct={is_correct}")
+        except Exception as e:
+            logger.error(f"Error settling signal {row['id']}: {e}")
+            
+    if count > 0:
+        logger.info(f"Settled {count} prediction signals.")
+    return count

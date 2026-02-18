@@ -20,6 +20,7 @@ async def test_health_command_logic():
     
     # Mock store response
     bot.store.get_table_counts = MagicMock(return_value={"ohlcv": 1000, "simulated_trades": 50})
+    bot.store.get_signal_stats = MagicMock(return_value={"total": 100, "settled": 80, "correct": 40, "accuracy": 0.5})
     
     cog = EventContractCog(bot)
     
@@ -61,6 +62,10 @@ async def test_health_command_logic():
     assert "💾 DB" in fields
     assert "ohlcv: 1,000 筆" in fields["💾 DB"]
     assert "trades: 50 筆" in fields["💾 DB"]
+
+    assert "📡 Signals" in fields
+    assert "總計: 100 筆" in fields["📡 Signals"]
+    assert "正確率: 50.00%" in fields["📡 Signals"]
     
     assert "⏱️ Uptime" in fields
     assert "0d 1h 30m" in fields["⏱️ Uptime"]

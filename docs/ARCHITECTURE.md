@@ -283,6 +283,30 @@ CREATE TABLE real_trades (
     slippage            REAL NOT NULL,
     execution_delay_sec INTEGER NOT NULL
 );
+
+-- 預測信號（全量記錄，Signal Layer）
+CREATE TABLE prediction_signals (
+    id                TEXT PRIMARY KEY,
+    strategy_name     TEXT NOT NULL,
+    timestamp         TEXT NOT NULL,       -- 預測時間 (ISO format, UTC)
+    timeframe_minutes INTEGER NOT NULL,
+    direction         TEXT NOT NULL,        -- 'higher' / 'lower'
+    confidence        FLOAT NOT NULL,
+    current_price     FLOAT NOT NULL,
+    expiry_time       TEXT NOT NULL,
+    -- 結算後填入
+    actual_direction  TEXT,                 -- NULL = 未結算, 'higher' / 'lower' / 'draw'
+    close_price       FLOAT,
+    is_correct        BOOLEAN,             -- NULL = 未結算
+    -- 與 Execution Layer 的關聯
+    traded            BOOLEAN NOT NULL DEFAULT 0,
+    trade_id          TEXT,                 -- FK to simulated_trades.id（如有）
+    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_signals_unsettled ON prediction_signals(expiry_time)
+    WHERE actual_direction IS NULL;
+CREATE INDEX idx_signals_strategy ON prediction_signals(strategy_name, timeframe_minutes);
 ```
 
 ### Data Pipeline
@@ -290,7 +314,14 @@ CREATE TABLE real_trades (
 ```
 Binance REST API  ──→  fetch_history.py  ──→  ohlcv table (歷史回填)
 Binance WebSocket ──→  pipeline.py       ──→  ohlcv table (即時更新)
-                                          ──→  觸發各策略 predict()
+                                          ──→  predict() ──→ save_prediction_signal() ──→ prediction_signals 表（全量）
+                                                  │
+                                                  └──→ process_signal() ──→ [閾值 + 風控通過] ──→ simulated_trades 表
+                                                            │                                          │
+                                                            └── 更新 signal.traded = True ──────────────┘
+
+Signal Settler（背景任務）：掃描 prediction_signals 中已到期但未結算的記錄，
+查詢收盤價，填入 actual_direction、close_price、is_correct。
 
 - **WebSocket 重連機制**：採指數退避（Exponential backoffs），初始 5 秒，最高 300 秒。
 - **健康監控**：每 60 秒檢查一次心跳，若超過 3 分鐘未收 K 線則強制重連。
@@ -299,6 +330,26 @@ Binance WebSocket ──→  pipeline.py       ──→  ohlcv table (即時更
 - WebSocket：用於即時監聽，K 線收盤時觸發策略 inference
 - 兩者寫入同一張 ohlcv table，用 `(symbol, interval, open_time)` 去重
 - 模組路徑皆位於 `src/btc_predictor/` 下（src layout）
+
+### DataStore 介面契約
+
+```python
+# DataStore 新增方法
+def save_prediction_signal(self, signal: PredictionSignal) -> str:
+    """無條件儲存預測信號，回傳 signal_id。"""
+
+def update_signal_traded(self, signal_id: str, trade_id: str) -> None:
+    """標記 signal 已產生對應的 SimulatedTrade。"""
+
+def get_unsettled_signals(self, max_age_hours: int = 24) -> pd.DataFrame:
+    """取得已到期但尚未結算的 signals。"""
+
+def settle_signal(self, signal_id: str, actual_direction: str, close_price: float, is_correct: bool) -> None:
+    """寫入 signal 的實際結果。"""
+
+def get_signal_stats(self) -> dict:
+    """取得 Signal Layer 統計：{"total": int, "settled": int, "correct": int, "accuracy": float | None}"""
+```
 ```
 
 ---

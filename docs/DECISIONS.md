@@ -72,3 +72,15 @@ Rationale: 5% 安全邊際補償模型在樣本外的表現衰減。10m 門檻�
 - **策略獨立性**：每個策略是獨立模組，共用 data pipeline，但 inference 和特徵工程互不干擾。
 - **統一輸出**：所有策略必須輸出 `PredictionSignal`（定義見 `ARCHITECTURE.md`）。
 - **Discord Bot 僅自用**：無需多用戶隔離、權限管理。
+
+## 7. 數據記錄原則
+
+| 決策 | 值 | Rationale |
+|------|-----|-----------|
+| 預測信號記錄 | 全量記錄（不論信心度） | Signal Layer 提供模型校準、閾值優化、drift 偵測的完整數據 |
+| 信心度閾值作用 | 僅控制 Execution Layer（是否產生 SimulatedTrade） | 閾值是交易決策，不是數據採集決策 |
+| Signal 結算 | 所有 signal 都結算 actual_outcome | 即使不下注的預測也需要知道對錯，用於校準分析 |
+
+**兩層數據模型：**
+- **Signal Layer**（`prediction_signals` 表）：每次 `strategy.predict()` 被呼叫就寫入一筆，無條件。用於校準分析、閾值優化、concept drift 偵測。
+- **Execution Layer**（`simulated_trades` 表）：僅信心度 ≥ 閾值且通過風控的預測才產生。用於 PnL 計算、資金管理。

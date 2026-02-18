@@ -56,10 +56,21 @@
 - **Phase 3 — G2.2 Ensemble (條件性)**:
   僅在 Phase 1 確認單模型 live 表現穩定後再推進
 
-**Phase 1 里程碑 (進入 Phase 2 的前提)：**
+**Phase 1 里程碑（進入 Phase 2 的前提）：**
+
+*穩定性軌道：*
 - [ ] run_live.py 可穩定運行 24 小時無崩潰
+
+*數據累積軌道（Signal Layer）：*
+- [ ] 累積 ≥ 200 筆 prediction_signals（所有策略合計，含已結算）
+- [ ] 其中 ≥ 30 筆已結算 signals 信心度 ≥ 0.591（觀察高信心區的 live DA）
+- [ ] 完成首次校準分析，產出 reliability diagram
+
+*執行軌道（Execution Layer）：*
 - [ ] lgbm_v2 60m 累積 ≥ 50 筆 live 模擬交易
 - [ ] catboost_v1 10m 累積 ≥ 50 筆 live 模擬交易
+
+**進入 Phase 2 的判定標準：** 穩定性軌道 + 數據累積軌道 通過即可。執行軌道為持續追蹤項目，不 block Phase 2 推進。
 
 ---
 
@@ -151,6 +162,18 @@
 - [x] **2.3.1** WebSocket 斷線自動重連（含指數退避） (G2.0)
 - [x] **2.3.2** 錯誤隔離：單一策略 exception 不影響其他策略運行 (G2.0)
 - [x] **2.3.3** 健康檢查 endpoint 或 Discord `/health` 指令
+
+### 2.4 數據基礎設施
+
+- [ ] **2.4.1** Signal Layer 實作 (G2.2.0)
+  - 新增 `prediction_signals` DB 表
+  - Pipeline 在每次 predict 後無條件寫入 signal
+  - Signal settler 定期結算所有未結算 signal 的 actual_outcome
+  - 不動現有 simulated_trades 流程
+
+- [ ] **2.4.2** 校準分析工具 (G2.2.1)
+  - `scripts/analyze_calibration.py`：分桶分析 + reliability diagram
+  - 依賴 Signal Layer 累積 ≥ 100 筆已結算 signal 後才有意義
 
 ---
 

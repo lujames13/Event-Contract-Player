@@ -2,7 +2,8 @@ import sqlite3
 import pandas as pd
 from pathlib import Path
 from typing import List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timedelta
+import uuid
 
 class DataStore:
     def __init__(self, db_path: str = "data/btc_predictor.db"):
@@ -51,9 +52,33 @@ class DataStore:
                     features_used       TEXT                  -- JSON string
                 );
             """)
+
+            # Table for prediction signals (Signal Layer)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS prediction_signals (
+                    id                TEXT PRIMARY KEY,
+                    strategy_name     TEXT NOT NULL,
+                    timestamp         TEXT NOT NULL,       -- 預測時間 (ISO format, UTC)
+                    timeframe_minutes INTEGER NOT NULL,
+                    direction         TEXT NOT NULL,        -- 'higher' / 'lower'
+                    confidence        FLOAT NOT NULL,
+                    current_price     FLOAT NOT NULL,
+                    expiry_time       TEXT NOT NULL,
+                    -- 結算後填入
+                    actual_direction  TEXT,                 -- NULL = 未結算, 'higher' / 'lower' / 'draw'
+                    close_price       FLOAT,
+                    is_correct        BOOLEAN,             -- NULL = 未結算
+                    -- 與 Execution Layer 的關聯
+                    traded            BOOLEAN NOT NULL DEFAULT 0,
+                    trade_id          TEXT,                 -- FK to simulated_trades.id（如有）
+                    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+            """)
             
             # Create indexing for faster retrieval if needed
             conn.execute("CREATE INDEX IF NOT EXISTS idx_ohlcv_time ON ohlcv (open_time);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_unsettled ON prediction_signals(expiry_time) WHERE actual_direction IS NULL;")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_strategy ON prediction_signals(strategy_name, timeframe_minutes);")
             conn.commit()
 
     def save_ohlcv(self, df: pd.DataFrame, symbol: str, interval: str):
@@ -327,4 +352,82 @@ class DataStore:
         with self._get_connection() as conn:
             ohlcv_count = conn.execute("SELECT COUNT(*) FROM ohlcv").fetchone()[0]
             trades_count = conn.execute("SELECT COUNT(*) FROM simulated_trades").fetchone()[0]
-        return {"ohlcv": ohlcv_count, "simulated_trades": trades_count}
+            signals_count = conn.execute("SELECT COUNT(*) FROM prediction_signals").fetchone()[0]
+        return {
+            "ohlcv": ohlcv_count, 
+            "simulated_trades": trades_count,
+            "prediction_signals": signals_count
+        }
+
+    # --- Signal Layer Methods ---
+
+    def save_prediction_signal(self, signal: Any) -> str:
+        """無條件儲存預測信號，回傳 signal_id。"""
+        signal_id = str(uuid.uuid4())
+        expiry_time = signal.timestamp + timedelta(minutes=signal.timeframe_minutes)
+        
+        with self._get_connection() as conn:
+            conn.execute("""
+                INSERT INTO prediction_signals (
+                    id, strategy_name, timestamp, timeframe_minutes, direction,
+                    confidence, current_price, expiry_time
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                signal_id, 
+                signal.strategy_name,
+                signal.timestamp.isoformat() if isinstance(signal.timestamp, datetime) else signal.timestamp,
+                signal.timeframe_minutes,
+                signal.direction,
+                signal.confidence,
+                signal.current_price,
+                expiry_time.isoformat() if isinstance(expiry_time, datetime) else expiry_time
+            ))
+        return signal_id
+
+    def update_signal_traded(self, signal_id: str, trade_id: str) -> None:
+        """標記 signal 已產生對應的 SimulatedTrade。"""
+        with self._get_connection() as conn:
+            conn.execute("""
+                UPDATE prediction_signals 
+                SET traded = 1, trade_id = ? 
+                WHERE id = ?
+            """, (trade_id, signal_id))
+
+    def get_unsettled_signals(self) -> pd.DataFrame:
+        """取得尚未結算的 signals。"""
+        query = """
+            SELECT * FROM prediction_signals
+            WHERE actual_direction IS NULL
+            ORDER BY expiry_time ASC
+        """
+        with self._get_connection() as conn:
+            return pd.read_sql_query(query, conn)
+
+    def settle_signal(self, signal_id: str, actual_direction: str, close_price: float, is_correct: bool) -> None:
+        """寫入 signal 的實際結果。"""
+        with self._get_connection() as conn:
+            conn.execute("""
+                UPDATE prediction_signals
+                SET actual_direction = ?, close_price = ?, is_correct = ?
+                WHERE id = ?
+            """, (actual_direction, close_price, is_correct, signal_id))
+
+    def get_signal_stats(self) -> dict:
+        """取得 Signal Layer 統計。"""
+        with self._get_connection() as conn:
+            row = conn.execute("""
+                SELECT 
+                    COUNT(*) as total,
+                    COALESCE(SUM(CASE WHEN actual_direction IS NOT NULL THEN 1 ELSE 0 END), 0) as settled,
+                    COALESCE(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END), 0) as correct
+                FROM prediction_signals
+            """).fetchone()
+            
+        total, settled, correct = row
+        accuracy = correct / settled if settled > 0 else None
+        return {
+            "total": total,
+            "settled": settled,
+            "correct": correct,
+            "accuracy": accuracy
+        }

@@ -213,12 +213,24 @@ class EventContractCog(commands.Cog):
             try:
                 counts = await asyncio.to_thread(store.get_table_counts)
                 db_status = f"✅ | ohlcv: {counts['ohlcv']:,} 筆 | trades: {counts['simulated_trades']:,} 筆"
+                
+                # Signal Layer Stats
+                signal_stats = await asyncio.to_thread(store.get_signal_stats)
+                if signal_stats['accuracy'] is not None:
+                    acc_str = f"{signal_stats['accuracy']:.2%}"
+                else:
+                    acc_str = "N/A"
+                signal_status = f"總計: {signal_stats['total']} 筆 | 已結算: {signal_stats['settled']} 筆 | 正確率: {acc_str}"
+
             except Exception as e:
                 db_status = f"⚠️ 讀取出錯: {e}"
+                signal_status = "⚠️ 讀取出錯"
         else:
             db_status = "❌ Store 未初始化"
+            signal_status = "❌ Store 未初始化"
         
         embed.add_field(name="💾 DB", value=db_status, inline=False)
+        embed.add_field(name="📡 Signals", value=signal_status, inline=False)
 
         # 3. Uptime
         if start_time:

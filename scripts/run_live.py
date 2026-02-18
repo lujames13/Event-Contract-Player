@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from btc_predictor.data.store import DataStore
 from btc_predictor.data.pipeline import DataPipeline
-from btc_predictor.simulation.settler import settle_pending_trades
+from btc_predictor.simulation.settler import settle_pending_trades, settle_pending_signals
 from btc_predictor.strategies.registry import StrategyRegistry
 from btc_predictor.utils.config import load_constants
 from btc_predictor.discord_bot.bot import EventContractBot
@@ -31,8 +31,9 @@ async def settler_loop(store: DataStore, client: AsyncClient, bot: EventContract
     """Periodic task to settle pending trades."""
     while True:
         try:
-            # Await the async settle_pending_trades
+            # Await the async settle_pending_trades and settle_pending_signals
             await settle_pending_trades(store, client, bot=bot)
+            await settle_pending_signals(store, client)
         except Exception as e:
             logger.error(f"Error in settler_loop: {e}", exc_info=True)
         await asyncio.sleep(60)

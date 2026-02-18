@@ -185,9 +185,23 @@ class DataPipeline:
                 # 1. Prediction (CPU-intensive)
                 signal = await asyncio.to_thread(strategy.predict, df, timeframe)
                 
-                # 2. Simulation Engine (Sync DB operations)
+                # Signal Layer: Record all signals unconditionally
+                signal_id = None
+                try:
+                    signal_id = self.store.save_prediction_signal(signal)
+                except Exception as e:
+                    logger.error(f"Signal Layer error (save): {e}")
+
+                # 2. Simulation Engine (Execution Layer: Threshold + Risk)
                 trade = await asyncio.to_thread(process_signal, signal, self.store)
                 
+                # Link Signal with Trade if applicable
+                if signal_id and trade:
+                    try:
+                        self.store.update_signal_traded(signal_id, trade.id)
+                    except Exception as e:
+                        logger.error(f"Signal Layer error (update_traded): {e}")
+
                 # 3. Discord Notification
                 if trade and self.bot:
                     await self.bot.send_signal(trade)
