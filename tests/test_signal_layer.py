@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.models import PredictionSignal
 from btc_predictor.simulation.settler import settle_pending_signals
 import uuid

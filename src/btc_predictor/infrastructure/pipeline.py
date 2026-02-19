@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 from datetime import datetime, timezone, timedelta
 from binance import AsyncClient, BinanceSocketManager
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.strategies.base import BaseStrategy
 from btc_predictor.simulation.engine import process_signal
 from typing import List, Any

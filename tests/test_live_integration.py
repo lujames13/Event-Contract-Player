@@ -4,7 +4,7 @@ import numpy as np
 import asyncio
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy
 from btc_predictor.simulation.engine import process_signal
 from btc_predictor.simulation.settler import settle_pending_trades

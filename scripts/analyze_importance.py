@@ -8,9 +8,9 @@ from lightgbm import LGBMClassifier
 # Setup path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.strategies.xgboost_v1.features import generate_features, get_feature_columns
-from btc_predictor.data.labeling import add_direction_labels
+from btc_predictor.infrastructure.labeling import add_direction_labels
 
 def main():
     parser = argparse.ArgumentParser(description="Feature Importance Analysis")

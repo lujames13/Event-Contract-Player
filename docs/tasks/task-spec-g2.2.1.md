@@ -299,7 +299,7 @@ catboost_v1 | 10m (已結算: 77 筆)
 
 ### G2.2.1.7 — DataStore 新增查詢方法
 
-**檔案：** `src/btc_predictor/data/store.py`
+**檔案：** `src/btc_predictor/infrastructure/store.py`
 
 新增一個供校準分析使用的查詢方法：
 
@@ -381,7 +381,7 @@ G2.2.1.8（測試）— 最後
 - `reports/calibration/` — 報告輸出目錄（腳本自動建立）
 
 **修改：**
-- `src/btc_predictor/data/store.py` — 新增 `get_settled_signals()` 方法
+- `src/btc_predictor/infrastructure/store.py` — 新增 `get_settled_signals()` 方法
 - `src/btc_predictor/discord_bot/bot.py` — 新增 `/calibration` 指令 + `PAYOUT_RATIOS` / `BREAKEVEN_WINRATES` 常數
 
 **不動：**
@@ -392,7 +392,7 @@ G2.2.1.8（測試）— 最後
 - `src/btc_predictor/models.py` — 不動
 - `src/btc_predictor/simulation/` — 不動
 - `src/btc_predictor/strategies/` — 不動
-- `src/btc_predictor/data/pipeline.py` — 不動
+- `src/btc_predictor/infrastructure/pipeline.py` — 不動
 - `src/btc_predictor/backtest/` — 不動
 - 現有的 `/health`、`/predict`、`/stats`、`/models`、`/help`、`/pause`、`/resume` 指令不動
 
@@ -454,7 +454,7 @@ BREAKEVEN_WINRATES = {10: 0.5556, 30: 0.5405, 60: 0.5405, 1440: 0.5405}
 
 ```bash
 # 0. DataStore 新方法存在
-grep "def get_settled_signals" src/btc_predictor/data/store.py
+grep "def get_settled_signals" src/btc_predictor/infrastructure/store.py
 
 # 1. 腳本可執行
 uv run python scripts/analyze_calibration.py --help
@@ -487,7 +487,7 @@ uv run pytest
 
 ### 實作結果
 - 實作 `scripts/analyze_calibration.py`：包含校準曲線 (ECE)、最佳閾值搜尋 (PnL/day)、時間窗口演化 (Drift)、連續信號一致性分析。
-- 修改 `src/btc_predictor/data/store.py`：新增 `get_settled_signals()` 方法，支援按策略及 timeframe 篩選。
+- 修改 `src/btc_predictor/infrastructure/store.py`：新增 `get_settled_signals()` 方法，支援按策略及 timeframe 篩選。
 - 修改 `src/btc_predictor/discord_bot/bot.py`：
   - 新增 `/calibration` 指令，產出簡化版校準分析 embed。
   - 新增 `PAYOUT_RATIOS` 與 `BREAKEVEN_WINRATES` 常數。
@@ -530,7 +530,7 @@ uv run pytest
 ### 修改範圍檢查
 - `git diff --name-only` 結果符合封閉清單：
   - `scripts/analyze_calibration.py`
-  - `src/btc_predictor/data/store.py`
+  - `src/btc_predictor/infrastructure/store.py`
   - `src/btc_predictor/discord_bot/bot.py`
   - `tests/test_calibration.py`
 

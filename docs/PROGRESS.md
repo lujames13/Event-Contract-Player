@@ -207,13 +207,13 @@
 **環境建設**
 - [x] `uv init` 初始化專案 + 目錄結構 + `project_constants.yaml` (2026-02-12)
 - [x] Binance REST API 歷史數據抓取 (2026-02-12)
-  - 產出：`scripts/fetch_history.py`, `src/btc_predictor/data/store.py`
+  - 產出：`scripts/fetch_history.py`, `src/btc_predictor/infrastructure/store.py`
 - [x] SQLite schema 建立 + 讀寫工具 (2026-02-12)
-  - 產出：`src/btc_predictor/data/store.py`, `tests/test_store.py`
+  - 產出：`src/btc_predictor/infrastructure/store.py`, `tests/test_store.py`
 
 **核心模組**
 - [x] Event Contract label 生成邏輯 (2026-02-14)
-  - 產出：`src/btc_predictor/data/labeling.py`
+  - 產出：`src/btc_predictor/infrastructure/labeling.py`
   - 平盤 (close == open) 視為 lose
 - [x] 特徵工程：OHLCV + 技術指標 (2026-02-14)
   - 產出：`src/btc_predictor/strategies/xgboost_direction/features.py`
@@ -239,7 +239,7 @@
 
 **即時系統骨架**
 - [x] WebSocket 即時數據管道 (2026-02-14)
-  - 產出：`src/btc_predictor/data/pipeline.py`
+  - 產出：`src/btc_predictor/infrastructure/pipeline.py`
 - [x] Discord Bot 基礎架構 (2026-02-14)
   - 產出：`src/btc_predictor/discord_bot/bot.py`
 - [x] 即時運行入口 (2026-02-14)

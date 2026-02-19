@@ -167,7 +167,7 @@ grep "不 block Phase 2" docs/PROGRESS.md
 
 ### G2.2.0.3 — 實作 DB Schema + DataStore 方法
 
-**檔案：** `src/btc_predictor/data/store.py`
+**檔案：** `src/btc_predictor/infrastructure/store.py`
 
 **a) 在 `_init_db()` 中新增 `prediction_signals` 表的 CREATE TABLE（含兩個 index）。**
 
@@ -225,18 +225,18 @@ def settle_signal(self, signal_id: str, actual_direction: str, close_price: floa
 
 **驗收：**
 ```bash
-grep "prediction_signals" src/btc_predictor/data/store.py
-grep "save_prediction_signal" src/btc_predictor/data/store.py
-grep "update_signal_traded" src/btc_predictor/data/store.py
-grep "get_unsettled_signals" src/btc_predictor/data/store.py
-grep "settle_signal" src/btc_predictor/data/store.py
+grep "prediction_signals" src/btc_predictor/infrastructure/store.py
+grep "save_prediction_signal" src/btc_predictor/infrastructure/store.py
+grep "update_signal_traded" src/btc_predictor/infrastructure/store.py
+grep "get_unsettled_signals" src/btc_predictor/infrastructure/store.py
+grep "settle_signal" src/btc_predictor/infrastructure/store.py
 ```
 
 ---
 
 ### G2.2.0.4 — 整合 Pipeline：predict 後無條件寫入 Signal
 
-**檔案：** `src/btc_predictor/data/pipeline.py`
+**檔案：** `src/btc_predictor/infrastructure/pipeline.py`
 
 在 pipeline 中策略 `predict()` 呼叫成功後、`process_signal()` 之前，插入 signal 儲存邏輯：
 
@@ -260,7 +260,7 @@ if trade is not None:
 
 **驗收：**
 ```bash
-grep "save_prediction_signal" src/btc_predictor/data/pipeline.py
+grep "save_prediction_signal" src/btc_predictor/infrastructure/pipeline.py
 ```
 
 ---
@@ -333,7 +333,7 @@ def get_signal_stats(self) -> dict:
 
 **驗收：**
 ```bash
-grep "get_signal_stats" src/btc_predictor/data/store.py
+grep "get_signal_stats" src/btc_predictor/infrastructure/store.py
 grep "signal" src/btc_predictor/discord_bot/bot.py | grep -i "stat\|count\|total"
 ```
 
@@ -390,8 +390,8 @@ G2.2.0.7（測試）— 最後，驗證全部
 - `docs/DECISIONS.md` — 新增 §7 數據記錄原則
 - `docs/ARCHITECTURE.md` — 新增 prediction_signals schema + 介面契約 + 流程圖更新
 - `docs/PROGRESS.md` — Phase 1 里程碑改為雙軌制 + 新增 2.1.3/2.1.4 任務
-- `src/btc_predictor/data/store.py` — 新增 prediction_signals 表 + 5 個方法
-- `src/btc_predictor/data/pipeline.py` — predict 後插入 save_prediction_signal 呼叫
+- `src/btc_predictor/infrastructure/store.py` — 新增 prediction_signals 表 + 5 個方法
+- `src/btc_predictor/infrastructure/pipeline.py` — predict 後插入 save_prediction_signal 呼叫
 - `src/btc_predictor/simulation/settler.py` — 新增 settle_pending_signals()
 - `scripts/run_live.py` — 定時任務中加入 settle_pending_signals()
 - `src/btc_predictor/discord_bot/bot.py` — /health embed 新增 signal 統計行
@@ -471,14 +471,14 @@ grep "數據累積軌道" docs/PROGRESS.md
 grep "不 block Phase 2" docs/PROGRESS.md
 
 # 3. DataStore 方法存在
-grep "def save_prediction_signal" src/btc_predictor/data/store.py
-grep "def update_signal_traded" src/btc_predictor/data/store.py
-grep "def get_unsettled_signals" src/btc_predictor/data/store.py
-grep "def settle_signal" src/btc_predictor/data/store.py
-grep "def get_signal_stats" src/btc_predictor/data/store.py
+grep "def save_prediction_signal" src/btc_predictor/infrastructure/store.py
+grep "def update_signal_traded" src/btc_predictor/infrastructure/store.py
+grep "def get_unsettled_signals" src/btc_predictor/infrastructure/store.py
+grep "def settle_signal" src/btc_predictor/infrastructure/store.py
+grep "def get_signal_stats" src/btc_predictor/infrastructure/store.py
 
 # 4. Pipeline 整合
-grep "save_prediction_signal" src/btc_predictor/data/pipeline.py
+grep "save_prediction_signal" src/btc_predictor/infrastructure/pipeline.py
 
 # 5. Signal Settler 存在
 grep "settle_pending_signals" src/btc_predictor/simulation/settler.py

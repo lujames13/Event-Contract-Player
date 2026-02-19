@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.simulation.settler import settle_pending_trades
 from dataclasses import dataclass
 from typing import Optional

@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
-from btc_predictor.data.pipeline import DataPipeline
+from btc_predictor.infrastructure.pipeline import DataPipeline
 
 def test_timeframe_trigger_logic():
     """驗證各 timeframe 的觸發條件是否符合預期"""
@@ -60,7 +60,7 @@ async def test_pipeline_filters_strategies():
     mock_store.get_ohlcv.return_value = MagicMock()
     
     # Trigger 60m
-    with patch('btc_predictor.data.pipeline.process_signal') as mock_process:
+    with patch('btc_predictor.infrastructure.pipeline.process_signal') as mock_process:
         await pipeline._trigger_strategies(60)
         
         # strat_a should be called, strat_b should NOT
@@ -72,7 +72,7 @@ async def test_pipeline_filters_strategies():
     strat_b.predict.reset_mock()
     
     # Trigger 10m
-    with patch('btc_predictor.data.pipeline.process_signal') as mock_process:
+    with patch('btc_predictor.infrastructure.pipeline.process_signal') as mock_process:
         await pipeline._trigger_strategies(10)
         
         # strat_b should be called, strat_a should NOT

@@ -219,7 +219,7 @@ def available_timeframes(self) -> list[int]:
    - 這確保策略 predict 時有足夠的近期資料
 
 **驗收：**
-1. `grep -c "print(" src/btc_predictor/data/pipeline.py` 返回 0（全部改為 logging）
+1. `grep -c "print(" src/btc_predictor/infrastructure/pipeline.py` 返回 0（全部改為 logging）
 2. `grep -c "print(" src/btc_predictor/simulation/settler.py` 返回 0
 3. 日誌格式包含時間戳和模組名：`[2026-02-17 12:00:00] [pipeline] ...`
 
@@ -352,7 +352,7 @@ G2.0.6（文件更新）— 最後
 **修改：**
 - `scripts/run_live.py` — 重構為多策略載入 + CLI 參數 + dry-run
 - `src/btc_predictor/simulation/settler.py` — bug fix + async 重構 + logging
-- `src/btc_predictor/data/pipeline.py` — 觸發邏輯修正 + 重連機制 + logging + 歷史回填
+- `src/btc_predictor/infrastructure/pipeline.py` — 觸發邏輯修正 + 重連機制 + logging + 歷史回填
 - `src/btc_predictor/strategies/base.py` — 新增 `available_timeframes` property（預設回傳空 list）
 - `src/btc_predictor/strategies/lgbm_v2/strategy.py` — override `available_timeframes`
 - `src/btc_predictor/strategies/catboost_v1/strategy.py` — override `available_timeframes`
@@ -366,7 +366,7 @@ G2.0.6（文件更新）— 最後
 - `src/btc_predictor/models.py` — PredictionSignal / SimulatedTrade dataclass 不動
 - `src/btc_predictor/simulation/engine.py` — process_signal 不動
 - `src/btc_predictor/simulation/risk.py` — 風控邏輯不動
-- `src/btc_predictor/data/store.py` — DB 操作不動
+- `src/btc_predictor/infrastructure/store.py` — DB 操作不動
 - `src/btc_predictor/discord_bot/` — 整個 bot 目錄不動（G2.1 的工作）
 - `docs/MODEL_ITERATIONS.md` — 本 task 不涉及模型實驗
 
@@ -436,7 +436,7 @@ uv run python scripts/run_live.py --dry-run --strategies lgbm_v2,catboost_v1 2>&
 uv run pytest tests/test_pipeline_trigger.py
 
 # 3. Logging（無 print）
-grep -c "print(" src/btc_predictor/data/pipeline.py      # 應返回 0
+grep -c "print(" src/btc_predictor/infrastructure/pipeline.py      # 應返回 0
 grep -c "print(" src/btc_predictor/simulation/settler.py  # 應返回 0
 
 # 4. Integration test
@@ -459,7 +459,7 @@ grep "Phase 1" docs/PROGRESS.md
 - **G2.0.0 - G2.0.6 全部完成**。系統現在支援多策略動態載入、自動結算、斷線重連及歷史回填。
 - **修改檔案**：
     - `scripts/run_live.py`: 重構為支援 StrategyRegistry 與 CLI 參數。
-    - `src/btc_predictor/data/pipeline.py`: 新增重連、心跳、回填及正確的觸發邏輯。
+    - `src/btc_predictor/infrastructure/pipeline.py`: 新增重連、心跳、回填及正確的觸發邏輯。
     - `src/btc_predictor/simulation/settler.py`: 重構為 async，修正平盤判定，強化價格查詢。
     - `src/btc_predictor/strategies/base.py` & 各策略類 (`lgbm_v2`, `catboost_v1`, `xgboost_v1`): 新增 `available_timeframes` 屬性。
     - `src/btc_predictor/models.py`: `SimulatedTrade` 新增 `features_used` 欄位以符合 DB。

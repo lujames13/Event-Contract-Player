@@ -8,7 +8,7 @@ from btc_predictor.strategies.base import BaseStrategy
 from btc_predictor.models import PredictionSignal
 from btc_predictor.strategies.lgbm_v1_tuned.features import generate_features, get_feature_columns
 from btc_predictor.strategies.lgbm_v1_tuned.model import predict_higher_probability, load_model, train_model
-from btc_predictor.data.labeling import add_direction_labels
+from btc_predictor.infrastructure.labeling import add_direction_labels
 
 class LGBMTunedStrategy(BaseStrategy):
     def __init__(self, model_path: Optional[str] = None):

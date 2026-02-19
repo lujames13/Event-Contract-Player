@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.discord_bot.bot import EventContractCog
 
 @pytest.fixture

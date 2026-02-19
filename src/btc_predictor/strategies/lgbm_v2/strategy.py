@@ -7,7 +7,7 @@ from btc_predictor.strategies.base import BaseStrategy
 from btc_predictor.models import PredictionSignal
 from btc_predictor.strategies.lgbm_v2.features import generate_features, get_feature_columns
 from btc_predictor.strategies.lgbm_v2.model import train_model_with_calibration, load_calibrated_model, save_calibrated_model
-from btc_predictor.data.labeling import add_direction_labels
+from btc_predictor.infrastructure.labeling import add_direction_labels
 
 class LGBMDirectionStrategyV2(BaseStrategy):
     """

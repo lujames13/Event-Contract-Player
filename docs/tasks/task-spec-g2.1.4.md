@@ -85,8 +85,8 @@
 
 **不動：**
 - `scripts/run_live.py`
-- `src/btc_predictor/data/store.py` — `get_strategy_summary()` 已在 G2.1.1 新增
-- `src/btc_predictor/data/pipeline.py`
+- `src/btc_predictor/infrastructure/store.py` — `get_strategy_summary()` 已在 G2.1.1 新增
+- `src/btc_predictor/infrastructure/pipeline.py`
 - `docs/`、`config/`
 - `src/btc_predictor/strategies/`、`src/btc_predictor/simulation/`
 - `src/btc_predictor/models.py`

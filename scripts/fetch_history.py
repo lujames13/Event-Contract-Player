@@ -10,7 +10,7 @@ from pathlib import Path
 # Add src to sys.path to allow imports from btc_predictor
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 
 def fetch_history(symbol: str, interval: str, start_str: str, end_str: str = None):
     load_dotenv()

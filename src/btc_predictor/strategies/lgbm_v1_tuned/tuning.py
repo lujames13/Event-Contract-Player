@@ -11,8 +11,8 @@ import pickle
 # Add src to sys.path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from btc_predictor.data.store import DataStore
-from btc_predictor.data.labeling import add_direction_labels
+from btc_predictor.infrastructure.store import DataStore
+from btc_predictor.infrastructure.labeling import add_direction_labels
 from btc_predictor.strategies.lgbm_v1_tuned.features import generate_features, get_feature_columns
 from btc_predictor.utils.config import load_constants
 

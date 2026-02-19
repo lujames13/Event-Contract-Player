@@ -8,7 +8,7 @@ import sys
 # Add src to sys.path to allow imports from btc_predictor
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.backtest.engine import run_backtest
 from btc_predictor.backtest.stats import calculate_backtest_stats
 # from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy (Removed)

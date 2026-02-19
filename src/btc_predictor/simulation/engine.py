@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from btc_predictor.models import PredictionSignal, SimulatedTrade
 from btc_predictor.simulation.risk import should_trade, calculate_bet
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 
 logger = logging.getLogger(__name__)
 

@@ -103,8 +103,8 @@ CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}
 
 **不動：**
 - `scripts/run_live.py`
-- `src/btc_predictor/data/store.py` — 不新增方法（用現有的 `get_latest_ohlcv`）
-- `src/btc_predictor/data/pipeline.py`
+- `src/btc_predictor/infrastructure/store.py` — 不新增方法（用現有的 `get_latest_ohlcv`）
+- `src/btc_predictor/infrastructure/pipeline.py`
 - `docs/`、`config/`
 - `src/btc_predictor/strategies/`、`src/btc_predictor/simulation/`
 - `src/btc_predictor/models.py`

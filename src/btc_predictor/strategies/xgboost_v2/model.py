@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 
 from btc_predictor.strategies.xgboost_v2.features import generate_features, get_feature_columns
-from btc_predictor.data.labeling import add_direction_labels
+from btc_predictor.infrastructure.labeling import add_direction_labels
 
 def train_model(
     X: pd.DataFrame, 

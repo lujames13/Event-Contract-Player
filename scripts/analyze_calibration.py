@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 
 # Constants (matching DECISIONS.md and Task Spec)
 CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}

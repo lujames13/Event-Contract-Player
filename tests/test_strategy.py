@@ -20,7 +20,7 @@ def trained_strategy():
     }, index=times)
     
     # Generate labels (random for dummy)
-    from btc_predictor.data.labeling import add_direction_labels
+    from btc_predictor.infrastructure.labeling import add_direction_labels
     df_with_labels = add_direction_labels(df, timeframe_minutes=10)
     
     # Generate features

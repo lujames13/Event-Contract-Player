@@ -3,7 +3,7 @@ import asyncio
 import logging
 import json
 from datetime import datetime, timezone, timedelta
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.utils.config import load_constants
 from btc_predictor.models import SimulatedTrade
 from typing import Any

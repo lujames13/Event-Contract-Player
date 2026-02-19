@@ -40,7 +40,7 @@
 
 ### 1. Pipeline 新增 `trigger_count` 屬性
 
-**檔案：** `src/btc_predictor/data/pipeline.py`
+**檔案：** `src/btc_predictor/infrastructure/pipeline.py`
 
 在 `DataPipeline.__init__` 中新增：
 ```python
@@ -68,7 +68,7 @@ bot.pipeline = None  # Will be set after pipeline creation
 
 ### 3. DataStore 新增 `get_table_counts()` 方法
 
-**檔案：** `src/btc_predictor/data/store.py`
+**檔案：** `src/btc_predictor/infrastructure/store.py`
 
 ```python
 def get_table_counts(self) -> dict[str, int]:
@@ -114,8 +114,8 @@ async def health(self, interaction: discord.Interaction):
 
 **修改：**
 - `src/btc_predictor/discord_bot/bot.py` — 新增 `/health` 指令 + `pipeline` 和 `start_time` 屬性
-- `src/btc_predictor/data/store.py` — 新增 `get_table_counts()` 方法
-- `src/btc_predictor/data/pipeline.py` — 新增 `trigger_count` 屬性（init + increment）
+- `src/btc_predictor/infrastructure/store.py` — 新增 `get_table_counts()` 方法
+- `src/btc_predictor/infrastructure/pipeline.py` — 新增 `trigger_count` 屬性（init + increment）
 - `scripts/run_live.py` — 新增 `bot.pipeline = pipeline`
 
 **新增：**
@@ -149,10 +149,10 @@ async def health(self, interaction: discord.Interaction):
 grep 'name="health"' src/btc_predictor/discord_bot/bot.py
 
 # 2. DataStore 新方法存在
-grep "def get_table_counts" src/btc_predictor/data/store.py
+grep "def get_table_counts" src/btc_predictor/infrastructure/store.py
 
 # 3. Pipeline trigger_count 存在
-grep "trigger_count" src/btc_predictor/data/pipeline.py
+grep "trigger_count" src/btc_predictor/infrastructure/pipeline.py
 
 # 4. run_live.py 傳遞 pipeline 給 bot
 grep "bot.pipeline" scripts/run_live.py
@@ -166,8 +166,8 @@ uv run pytest tests/test_bot_health.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-- 🟢 **src/btc_predictor/data/pipeline.py**: 新增 `trigger_count` 追蹤策略觸發次數。
-- 🟢 **src/btc_predictor/data/store.py**: 新增 `get_table_counts()` 用於統計 OHLCV 與交易筆數。
+- 🟢 **src/btc_predictor/infrastructure/pipeline.py**: 新增 `trigger_count` 追蹤策略觸發次數。
+- 🟢 **src/btc_predictor/infrastructure/store.py**: 新增 `get_table_counts()` 用於統計 OHLCV 與交易筆數。
 - 🟢 **src/btc_predictor/discord_bot/bot.py**:
     - 新增 `pipeline` 與 `start_time` 屬性。
     - 實作 `/health` 指令，整合 WebSocket 狀態、Pipeline 進度、DB 統計與 Uptime。

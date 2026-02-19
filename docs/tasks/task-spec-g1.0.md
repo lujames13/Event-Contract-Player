@@ -189,7 +189,7 @@ else:
 2. `uv run pytest tests/test_backtest_engine.py` 通過
 
 **不要做的事：**
-- 不要改 `src/btc_predictor/data/labeling.py` 的 label 邏輯（那邊的平盤處理是正確的）
+- 不要改 `src/btc_predictor/infrastructure/labeling.py` 的 label 邏輯（那邊的平盤處理是正確的）
 - 不要改 PredictionSignal 或 SimulatedTrade 的 dataclass 定義
 - 不要改 engine.py 中其他邏輯（walk-forward 流程、trade 記錄等）
 
@@ -424,7 +424,7 @@ uv run python scripts/train_model.py --all-strategies --all
 - `config/project_constants.yaml`
 - `src/btc_predictor/models.py`
 - `src/btc_predictor/strategies/base.py`
-- `src/btc_predictor/data/labeling.py`
+- `src/btc_predictor/infrastructure/labeling.py`
 - `src/btc_predictor/simulation/risk.py`
 - `src/btc_predictor/backtest/stats.py`
 

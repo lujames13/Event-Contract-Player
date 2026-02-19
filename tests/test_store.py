@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 from datetime import datetime
 import os
 

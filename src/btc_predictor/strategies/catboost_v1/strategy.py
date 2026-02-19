@@ -8,7 +8,7 @@ from btc_predictor.strategies.base import BaseStrategy
 from btc_predictor.models import PredictionSignal
 from btc_predictor.strategies.catboost_v1.features import generate_features, get_feature_columns
 from btc_predictor.strategies.catboost_v1.model import train_model, load_model, save_model
-from btc_predictor.data.labeling import add_direction_labels
+from btc_predictor.infrastructure.labeling import add_direction_labels
 
 logger = logging.getLogger(__name__)
 

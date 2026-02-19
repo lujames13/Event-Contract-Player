@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from btc_predictor.data.labeling import add_direction_labels, calculate_single_label
+from btc_predictor.infrastructure.labeling import add_direction_labels, calculate_single_label
 
 @pytest.fixture
 def sample_data():

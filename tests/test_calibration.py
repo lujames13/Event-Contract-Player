@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from btc_predictor.data.store import DataStore
+from btc_predictor.infrastructure.store import DataStore
 import os
 import subprocess
 

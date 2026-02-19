@@ -68,7 +68,7 @@ catboost_v1    | 10m |  123 | 53.7%  | -2.41
 
 ### 1. DataStore 新增 `get_strategy_detail()` 方法
 
-**檔案：** `src/btc_predictor/data/store.py`
+**檔案：** `src/btc_predictor/infrastructure/store.py`
 
 ```python
 def get_strategy_detail(self, strategy_name: str, timeframe: int = None) -> dict:
@@ -183,14 +183,14 @@ async def stats(self, interaction: discord.Interaction,
 
 **修改：**
 - `src/btc_predictor/discord_bot/bot.py` — 改寫 `/stats` 指令
-- `src/btc_predictor/data/store.py` — 新增 `get_strategy_detail()` 方法
+- `src/btc_predictor/infrastructure/store.py` — 新增 `get_strategy_detail()` 方法
 
 **新增：**
 - `tests/test_bot_stats.py` — 升級版 `/stats` 的 unit test
 
 **不動：**
 - `scripts/run_live.py`
-- `src/btc_predictor/data/pipeline.py`
+- `src/btc_predictor/infrastructure/pipeline.py`
 - `docs/`、`config/`
 - `src/btc_predictor/strategies/`、`src/btc_predictor/simulation/`
 - `src/btc_predictor/models.py`
@@ -216,7 +216,7 @@ async def stats(self, interaction: discord.Interaction,
 grep "model: str = None" src/btc_predictor/discord_bot/bot.py
 
 # 2. DataStore 新方法存在
-grep "def get_strategy_detail" src/btc_predictor/data/store.py
+grep "def get_strategy_detail" src/btc_predictor/infrastructure/store.py
 
 # 3. hardcoded 策略名稱已移除
 ! grep '"lgbm_v2", "catboost_v1", "xgboost_v1"' \
@@ -231,7 +231,7 @@ uv run pytest tests/test_bot_stats.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-- 修改 `src/btc_predictor/data/store.py`: 新增 `get_strategy_detail()` 支援細節統計與 drawdown 計算。
+- 修改 `src/btc_predictor/infrastructure/store.py`: 新增 `get_strategy_detail()` 支援細節統計與 drawdown 計算。
 - 修改 `src/btc_predictor/discord_bot/bot.py`: 改寫 `/stats` 支援 `model` 與 `timeframe` 參數，動態生成策略列表，移除 hardcoded 名稱。
 - 新增 `tests/test_bot_stats.py`: 包含 DataStore 邏輯測試與 Cog 指令 Mock 測試。
 

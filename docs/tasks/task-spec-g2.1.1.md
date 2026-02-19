@@ -36,7 +36,7 @@
 
 ### 1. DataStore 新增 `get_strategy_summary()` 方法
 
-**檔案：** `src/btc_predictor/data/store.py`
+**檔案：** `src/btc_predictor/infrastructure/store.py`
 
 ```python
 def get_strategy_summary(self, strategy_name: str) -> dict:
@@ -90,14 +90,14 @@ async def models(self, interaction: discord.Interaction):
 
 **修改：**
 - `src/btc_predictor/discord_bot/bot.py` — 新增 `/models` 指令
-- `src/btc_predictor/data/store.py` — 新增 `get_strategy_summary()` 方法
+- `src/btc_predictor/infrastructure/store.py` — 新增 `get_strategy_summary()` 方法
 
 **新增：**
 - `tests/test_bot_models.py` — `/models` 指令的 unit test
 
 **不動：**
 - `scripts/run_live.py` — 已在 G2.1.0 修改完畢
-- `src/btc_predictor/data/pipeline.py` — 已在 G2.1.0 修改完畢
+- `src/btc_predictor/infrastructure/pipeline.py` — 已在 G2.1.0 修改完畢
 - `docs/` — 所有文件不動
 - `config/` — 不動
 - `src/btc_predictor/strategies/` — 不動
@@ -124,7 +124,7 @@ async def models(self, interaction: discord.Interaction):
 grep 'name="models"' src/btc_predictor/discord_bot/bot.py
 
 # 2. DataStore 新方法存在
-grep "def get_strategy_summary" src/btc_predictor/data/store.py
+grep "def get_strategy_summary" src/btc_predictor/infrastructure/store.py
 
 # 3. 測試通過
 uv run pytest tests/test_bot_models.py -v
@@ -135,7 +135,7 @@ uv run pytest tests/test_bot_models.py -v
 ## Coding Agent 回報區
 
 ### 實作結果
-- 新增 `DataStore.get_strategy_summary()` 於 `src/btc_predictor/data/store.py`，用於查詢策略累計統計。
+- 新增 `DataStore.get_strategy_summary()` 於 `src/btc_predictor/infrastructure/store.py`，用於查詢策略累計統計。
 - 新增 `/models` slash command 於 `src/btc_predictor/discord_bot/bot.py`，以 Embed 格式展示已載入模型狀態。
 - 新增 `tests/test_bot_models.py` 並通過測試。
 
