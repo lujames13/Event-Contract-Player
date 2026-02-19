@@ -403,6 +403,39 @@ class DataStore:
         with self._get_connection() as conn:
             return pd.read_sql_query(query, conn)
 
+    def get_settled_signals(
+        self,
+        strategy_name: str | None = None,
+        timeframe_minutes: int | None = None
+    ) -> pd.DataFrame:
+        """
+        取得已結算的 prediction signals。
+
+        Args:
+            strategy_name: 篩選策略（None = 全部）
+            timeframe_minutes: 篩選 timeframe（None = 全部）
+
+        Returns:
+            DataFrame with columns: id, strategy_name, timestamp, timeframe_minutes,
+            direction, confidence, current_price, expiry_time,
+            actual_direction, close_price, is_correct, traded, trade_id
+        """
+        query = "SELECT * FROM prediction_signals WHERE actual_direction IS NOT NULL"
+        params = []
+
+        if strategy_name:
+            query += " AND strategy_name = ?"
+            params.append(strategy_name)
+
+        if timeframe_minutes:
+            query += " AND timeframe_minutes = ?"
+            params.append(timeframe_minutes)
+
+        query += " ORDER BY timestamp ASC"
+
+        with self._get_connection() as conn:
+            return pd.read_sql_query(query, conn, params=params)
+
     def settle_signal(self, signal_id: str, actual_direction: str, close_price: float, is_correct: bool) -> None:
         """寫入 signal 的實際結果。"""
         with self._get_connection() as conn:

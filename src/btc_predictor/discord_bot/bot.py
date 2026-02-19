@@ -7,10 +7,14 @@ from datetime import datetime, timezone
 import asyncio
 import logging
 import time
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLDS = {10: 0.606, 30: 0.591, 60: 0.591, 1440: 0.591}
+PAYOUT_RATIOS = {10: 1.80, 30: 1.85, 60: 1.85, 1440: 1.85}
+BREAKEVEN_WINRATES = {10: 0.5556, 30: 0.5405, 60: 0.5405, 1440: 0.5405}
 
 TIMEFRAME_CHOICES = [
     app_commands.Choice(name="10 分鐘", value=10),
@@ -161,6 +165,102 @@ class EventContractCog(commands.Cog):
 
     @stats.autocomplete('model')
     async def stats_model_autocomplete(self, interaction: discord.Interaction, current: str):
+        return await self.model_autocomplete(interaction, current)
+
+    @app_commands.command(name="calibration", description="顯示模型校準分析摘要")
+    @app_commands.describe(strategy="選擇策略（留空顯示所有）")
+    async def calibration(self, interaction: discord.Interaction, strategy: str = None):
+        try:
+            await interaction.response.defer()
+        except discord.errors.NotFound:
+            return
+
+        if not self.bot.store:
+            await interaction.followup.send("DataStore not initialized.", ephemeral=True)
+            return
+
+        try:
+            df = await asyncio.to_thread(self.bot.store.get_settled_signals, strategy_name=strategy)
+            
+            if df.empty:
+                await interaction.followup.send("尚無足夠已結算資料進行分析。", ephemeral=True)
+                return
+
+            embed = discord.Embed(title="📊 校準分析摘要", color=discord.Color.purple())
+            
+            # Group by strategy and timeframe
+            grouped = df.groupby(['strategy_name', 'timeframe_minutes'])
+            
+            summary_texts = []
+            for (name, tf), group in grouped:
+                total_count = len(group)
+                acc = group['is_correct'].mean()
+                
+                # ECE calculation (simplified for embed - 3 bins)
+                bins = [(0.50, 0.60), (0.60, 0.70), (0.70, 1.01)]
+                ece = 0.0
+                for start, end in bins:
+                    mask = (group['confidence'] >= start) & (group['confidence'] < end)
+                    bin_df = group[mask]
+                    if not bin_df.empty:
+                        ece += (len(bin_df) / total_count) * abs(bin_df['is_correct'].mean() - bin_df['confidence'].mean())
+                
+                # Optimal threshold search (Simplified)
+                payout = PAYOUT_RATIOS.get(tf, 1.85)
+                current_threshold = CONFIDENCE_THRESHOLDS.get(tf, 0.591)
+                
+                best_pnl_day = -999.0
+                best_threshold = 0.50
+                current_pnl_day = 0.0
+                
+                ts_min = pd.to_datetime(group['timestamp']).min()
+                ts_max = pd.to_datetime(group['timestamp']).max()
+                duration_days = max(0.1, (ts_max - ts_min).total_seconds() / 86400)
+                
+                threshold_range = np.arange(0.50, 0.71, 0.01)
+                for t in threshold_range:
+                    passed = group[group['confidence'] >= t]
+                    if passed.empty: continue
+                    
+                    # Estimate avg bet
+                    # Use a vectorized calculation for efficiency if possible
+                    c = passed['confidence'].values
+                    bets = 5 + (c - t) / (1.0 - t) * 15
+                    bets = np.clip(bets, 5, 20)
+                    avg_bet = np.mean(bets)
+                    
+                    pnl_trade = avg_bet * (passed['is_correct'].mean() * payout - 1)
+                    pnl_day = pnl_trade * (len(passed) / duration_days)
+                    
+                    if pnl_day > best_pnl_day:
+                        best_pnl_day = pnl_day
+                        best_threshold = t
+                    if abs(t - current_threshold) < 0.005:
+                        current_pnl_day = pnl_day
+                
+                summary_text = (
+                    f"**{name} | {tf}m** (已結算: {total_count} 筆)\n"
+                    f"  正確率: {acc:.2%} | ECE: {ece:.3f}\n"
+                    f"  當前閾值: {current_threshold:.3f} | 建議閾值: {best_threshold:.2f}\n"
+                    f"  E[PnL/day] 當前: {current_pnl_day:+.2f} | 最佳: {best_pnl_day:+.2f}\n"
+                )
+                summary_texts.append(summary_text)
+            
+            embed.description = "\n".join(summary_texts)
+            
+            if len(df) < 200:
+                embed.set_footer(text="⚠️ 樣本量 < 200，統計信心有限\n💡 完整報告: uv run python scripts/analyze_calibration.py")
+            else:
+                embed.set_footer(text="💡 完整報告: uv run python scripts/analyze_calibration.py")
+                
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            logger.error(f"Error in calibration command: {e}", exc_info=True)
+            await interaction.followup.send(f"❌ 執行分析時出錯: {e}", ephemeral=True)
+
+    @calibration.autocomplete('strategy')
+    async def calibration_strategy_autocomplete(self, interaction: discord.Interaction, current: str):
         return await self.model_autocomplete(interaction, current)
 
     @app_commands.command(name="pause", description="暫停模擬交易訊號推送")
