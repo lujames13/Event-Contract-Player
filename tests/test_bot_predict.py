@@ -40,7 +40,7 @@ async def test_predict_command_success():
                 timestamp=df_in.index[-1],
                 timeframe_minutes=10,
                 direction="lower",
-                confidence=0.5501,
+                confidence=0.5101,
                 current_price=50000.0
             )
             
@@ -66,7 +66,7 @@ async def test_predict_command_success():
     fields = embed.fields
     assert len(fields) == 2
     
-    # 10m: lower, confidence=0.5501, threshold=0.606, 不下注
+    # 10m: lower, confidence=0.5101, threshold=0.52, 不下注
     assert "lgbm_v2 | 10m" in fields[0].name
     assert "LOWER" in fields[0].value
     assert "❌ 不下注" in fields[0].value

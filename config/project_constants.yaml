@@ -37,7 +37,7 @@ simulation:
   min_trades_for_significance: 200
 
 confidence_thresholds:                  # breakeven_winrate + 5% 安全邊際
-  10: 0.606
+  10: 0.52    # 從 0.606 調整，依據 174 筆 live signal 校準分析（2026-02-20）
   30: 0.591
   60: 0.591
   1440: 0.591
