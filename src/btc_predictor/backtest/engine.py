@@ -20,31 +20,33 @@ def _process_fold(
     payout_ratio: float
 ) -> List[SimulatedTrade]:
     """Process a single walk-forward fold."""
-    # Create a local copy of the strategy to avoid state sharing in threads/processes
-    # NOTE: Some strategies might not be deep-copyable easily if they hold complex objects,
-    # but for typical ML strategies it should work fine.
+    # Create a local copy of the strategy to avoid state sharing
     local_strategy = copy.deepcopy(strategy)
     
-    # 1. Prepare training data (sliding window of train_days)
+    # 1. Prepare data for this fold (train + test)
+    # Ensure we include enough lookback for features (e.g. 14 days for safety)
     train_start = fold_start - timedelta(days=train_days)
-    train_data = ohlcv[(ohlcv.index >= train_start) & (ohlcv.index < fold_start)]
+    # Add a safety margin for indicators that might need historical data beyond train_days
+    # For now, we take from train_start to fold_end (which is non-inclusive in testing)
+    fold_data = ohlcv[(ohlcv.index >= train_start) & (ohlcv.index <= fold_end)].copy()
     
     # 2. Fit strategy if needed
     if local_strategy.requires_fitting:
-        # print(f"  Fitting fold starting {fold_start}...")
+        train_data = fold_data[fold_data.index < fold_start]
         local_strategy.fit(train_data, timeframe_minutes)
         
     # 3. Predict on test data
-    test_data_window = ohlcv[(ohlcv.index >= fold_start) & (ohlcv.index < fold_end)]
+    # test_data_window excludes the fold_end (as predictions are for periods finishing AT or BEFORE fold_end)
+    test_data_window = fold_data[(fold_data.index >= fold_start) & (fold_data.index < fold_end)]
     
     # We simulate non-overlapping trades by stepping by timeframe_minutes.
     test_timestamps = test_data_window.index[::timeframe_minutes]
     
     fold_trades = []
     for ts in test_timestamps:
-        # Optimization: Slice only recent history (e.g. 7 days) to avoid copying full DataFrame
-        lookback_start = ts - timedelta(days=7)
-        data_up_to_ts = ohlcv.loc[lookback_start:ts]
+        # Each prediction uses data up to current timestamp
+        # Since fold_data is local and small, this is fast and thread-safe.
+        data_up_to_ts = fold_data.loc[:ts]
         
         signal = local_strategy.predict(data_up_to_ts, timeframe_minutes)
         
@@ -55,16 +57,16 @@ def _process_fold(
             # 5. Create trade record
             expiry_time = ts + timedelta(minutes=timeframe_minutes)
             
-            # Look up settlement price
-            if expiry_time in ohlcv.index:
-                close_price = float(ohlcv.loc[expiry_time, 'close'])
-                open_price = float(ohlcv.loc[ts, 'close'])
+            # Look up settlement price in fold_data
+            if expiry_time in fold_data.index:
+                close_price = float(fold_data.loc[expiry_time, 'close'])
+                open_price = float(fold_data.loc[ts, 'close'])
                 
                 # Result logic: higher wins if close > open
                 if signal.direction == "higher":
-                    is_win = close_price > open_price      # 嚴格大於才算贏
+                    is_win = close_price > open_price
                 else:
-                    is_win = close_price < open_price      # 嚴格小於才算贏
+                    is_win = close_price < open_price
                     
                 result = "win" if is_win else "lose"
                 pnl = bet * (payout_ratio - 1) if is_win else -bet

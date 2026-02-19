@@ -165,15 +165,16 @@
 
 ### 2.4 數據基礎設施
 
-- [ ] **2.4.1** Signal Layer 實作 (G2.2.0)
+- [x] **2.4.1** Signal Layer 實作 (G2.2.0)
   - 新增 `prediction_signals` DB 表
   - Pipeline 在每次 predict 後無條件寫入 signal
   - Signal settler 定期結算所有未結算 signal 的 actual_outcome
   - 不動現有 simulated_trades 流程
 
-- [ ] **2.4.2** 校準分析工具 (G2.2.1)
+- [x] **2.4.2** 校準分析工具 (G2.2.1)
   - `scripts/analyze_calibration.py`：分桶分析 + reliability diagram
   - 依賴 Signal Layer 累積 ≥ 100 筆已結算 signal 後才有意義
+  - Completed: 2026-02-19
 
 ---
 

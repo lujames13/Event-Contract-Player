@@ -349,6 +349,13 @@ def settle_signal(self, signal_id: str, actual_direction: str, close_price: floa
 
 def get_signal_stats(self) -> dict:
     """取得 Signal Layer 統計：{"total": int, "settled": int, "correct": int, "accuracy": float | None}"""
+
+def get_settled_signals(
+    self,
+    strategy_name: str | None = None,
+    timeframe_minutes: int | None = None
+) -> pd.DataFrame:
+    """取得已結算的 prediction signals，供校準分析使用。"""
 ```
 ```
 
