@@ -1,6 +1,6 @@
 # Task Spec G2.3.0 — 系統成熟度提升：文件同步 + Flaky Test 修復 + 運維穩健性
 
-<!-- status: review -->
+<!-- status: completed -->
 <!-- created: 2026-02-19 -->
 <!-- architect: Claude (Antigravity) -->
 
@@ -389,16 +389,29 @@ uv run pytest -v
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+### 審核結果：[PASS]
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+- ✅ 0. PROGRESS.md 2.4.1、2.4.2 已勾選
+- ✅ 1. ARCHITECTURE.md 包含 get_settled_signals
+- ✅ 2. Flaky Test 穩定通過（已跑 5 次全數通過）
+- ✅ 3. Supervisor 腳本存在且語法正確
+- ✅ 4. logs/ 在 .gitignore 中
+- ✅ 5. 所有測試通過 (含 ModuleNotFoundError 修復)
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+- `scripts/run_live_supervised.sh` (Created)
+- `docs/PROGRESS.md` (Updated)
+- `docs/ARCHITECTURE.md` (Updated)
+- `src/btc_predictor/backtest/engine.py` (Flaky fix)
+- `tests/test_backtest_engine.py` (Verification)
+- `.gitignore` (Updated)
+- `scripts/analyze_calibration.py` (Fix: sys.path hack added)
+- `pyproject.toml` (Fix: pytest pythonpath added)
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+- `scripts/analyze_calibration.py` 缺少 `sys.path` hack，導致非 `PYTHONPATH=src` 環境下報錯。已手動修復。
+- `pytest` 在 `uv run` 下無法自動找到 `src` 模組，已在 `pyproject.toml` 中加入 `pythonpath = ["src"]` 配置。
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+- 任務已完全完成，Gate 2 Phase 1 穩定性軌道已具備長期運行條件。

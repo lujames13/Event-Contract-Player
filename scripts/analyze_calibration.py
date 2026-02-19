@@ -8,6 +8,11 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
+import sys
+
+# Add src to sys.path to allow imports from btc_predictor
+sys.path.append(str(Path(__file__).parent.parent / "src"))
+
 from btc_predictor.infrastructure.store import DataStore
 
 # Constants (matching DECISIONS.md and Task Spec)
