@@ -1,6 +1,6 @@
 # Task Spec G2.5.1 — PM-0.2 實機驗證：GCP London VM 存取測試
 
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-02-21 -->
 <!-- architect: Claude Opus (Chat Project) -->
 
@@ -407,16 +407,22 @@ Coding agent 完成三個腳本 + pytest naming fix 後停下。
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+### 審核結果：[PASS]
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+- [✅] 1. 三個新腳本都存在
+- [✅] 2. vps_verify.py 在本機可執行（Tests: 7 已驗證，JSON 結構符合規格）
+- [✅] 3. vm_setup.sh 語法正確
+- [✅] 4. update_pm02_report.py 可處理 sample JSON 並更新報告（已透過 review test 驗證 regex 邏輯）
+- [✅] 5. pytest naming collision 已修復
+- [✅] 6. 既有測試仍通過 (78 passed)
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+- [✅] 修改範圍符合 Spec 封閉清單。
+- [✅] 未改動 `src/` 或核心邏輯。
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+無。實作完整且考慮到 VM 環境的最小依賴需求。
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+無（符合 Spec 要求）。待使用者回傳實測數據後再更新。
