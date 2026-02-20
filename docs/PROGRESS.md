@@ -208,9 +208,9 @@ PM-0: Access & Legal Feasibility（BLOCKER）
   → Go/No-Go 決策點（由架構師判定）
 
 PM-1 ~ PM-7:（PM-0 通過後才展開）
-  - [ ] PM-1: Market Structure & Lifecycle
+  - [x] PM-1: Market Structure & Lifecycle
   - [ ] PM-2: Price Feed 行為模式
-  - [ ] PM-4: Fee Structure 完整拆解
+  - [x] PM-4: Fee Structure 完整拆解
   - [ ] PM-5: Market Implied Probability Calibration
   - [ ] PM-3: Order Book Depth & Liquidity
   - [ ] PM-6: 獲利模式可行性

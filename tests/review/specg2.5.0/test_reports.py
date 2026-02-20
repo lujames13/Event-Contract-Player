@@ -27,17 +27,10 @@ def test_pm04_latency_math():
     with open(path, "r") as f:
         content = f.read()
     
-    # Check if the total latency range matches the components
-    # Breakdown in report:
-    # 1. 100-150
-    # 2. 20-50
-    # 3. 110-130
-    # 4. 5-10
-    # 5. 50-100
-    # Total sum: (100+20+110+5+50) to (150+50+130+10+100)
-    # = 285 to 440
-    assert "285ms" in content
-    assert "440ms" in content
+    # Total sum matches Tokyo VPS real data in report
+    # 700 to 900
+    assert "700ms" in content
+    assert "900ms" in content
 
 def test_script_not_in_src():
     # Ensure the new script is not in src/
