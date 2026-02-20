@@ -178,6 +178,50 @@
 
 ---
 
+## Polymarket Feasibility Study (Gate 2.5)
+
+**狀態：** 🔄 ACTIVE — 啟動 PM-0 調查
+
+**動機：** Polymarket 提供完整 CLOB API，解決 Binance EC 無 API 的自動化瓶頸。動態賠率創造方向預測以外的獲利維度。但台灣被列為 close-only 限制地區，需要先解決存取問題再評估 edge 是否可操作。
+
+**關鍵背景（2026-02 調查結果）：**
+- 台灣在 Polymarket 的限制等級為 **close-only**（可關倉、不可開倉），非完全封鎖
+- CLOB API `/order` 端點會校驗 IP，從受限地區提交的訂單會被直接拒絕
+- Public read-only API（Gamma API、order book 查詢）的 geoblock 狀態尚未確認
+- 5m BTC prediction market 已於 2026 年 2 月上線，使用 Chainlink oracle 自動結算
+- 台灣曾在 2024 年起訴一名使用 Polymarket 下注政治選舉的用戶（約 $530 USD）
+
+**設計原則：**
+- PM-0 是 blocker gate：不通過則整個調查終止
+- 純調查研究，不寫交易邏輯
+- 所有 data collector 腳本放在 `scripts/polymarket/`
+- 所有報告放在 `reports/polymarket/`
+- 不修改現有 Binance EC 系統的任何程式碼
+
+**Gate 2.5 推進流程：**
+
+PM-0: Access & Legal Feasibility（BLOCKER）
+  - [ ] PM-0.1: Public API 存取測試（台灣 IP）
+  - [ ] PM-0.2: VPS Relay 可行性測試
+  - [ ] PM-0.3: 台灣法規風險評估
+  - [ ] PM-0.4: E2E Architecture Latency
+  → Go/No-Go 決策點（由架構師判定）
+
+PM-1 ~ PM-7:（PM-0 通過後才展開）
+  - [ ] PM-1: Market Structure & Lifecycle
+  - [ ] PM-2: Price Feed 行為模式
+  - [ ] PM-4: Fee Structure 完整拆解
+  - [ ] PM-5: Market Implied Probability Calibration
+  - [ ] PM-3: Order Book Depth & Liquidity
+  - [ ] PM-6: 獲利模式可行性
+  - [ ] PM-7: Engineering Integration Plan
+
+Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
+  - [ ] PM-0 ~ PM-7 全部產出報告
+  - [ ] 架構師根據報告決定：🟢 正式轉移 / 🟡 部分整合 / 🔴 放棄
+
+---
+
 ## Gate 3：模擬交易統計顯著
 
 > **前提：Gate 2 通過。**

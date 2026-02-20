@@ -223,7 +223,7 @@ nohup bash scripts/run_live_supervised.sh --strategies lgbm_v2,catboost_v1 &
 - 無。本次為參數調整，非功能性里程碑。
 
 ### Commit Hash
-- 0ed5ab727d257d155f0f3dc915c8702f33163ffd
+- c4d6539affa4777d893faa60654b0f321a2171bf
 
 ---
 
