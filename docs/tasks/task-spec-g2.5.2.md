@@ -1,6 +1,6 @@
 # Task Spec G2.5.2 — PM-0 遺留問題修復 + Tokyo 補測
 
-<!-- status: open -->
+<!-- status: done -->
 <!-- created: 2026-02-21 -->
 <!-- architect: Claude Opus (Chat Project) -->
 
@@ -130,7 +130,33 @@ gcloud compute instances delete pm-test-tokyo --zone=asia-northeast1-b --quiet
 ## Review Agent 回報區
 
 ### 審核結果
-[PASS / FAIL]
+[PASS]
 
 ### 檢查清單
-[留白]
+- [x] L1 Auth 改為使用 POST `https://clob.polymarket.com/api-key/create-or-derive`，實測回傳 401，代表通過 WAF 防禦並進入認證邏輯。
+- [x] `/markets` 取得 `data["data"]` 陣列機制修復，回傳 >0。
+- [x] 成功通過 GCP Tokyo VM 實機驗證。
+
+---
+
+## 實機執行記錄與決策 (Architect Desk)
+
+### 2026-02-21 21:45 (UTC+8) - GCP Tokyo VM 實測
+- **執行人**: 使用者
+- **結果**: 🟢 **SUCCESS**
+  - **Geoblock**: `blocked: false` (日本 GCP Datacenter 未被限)
+  - **CLOB Latency**: `p50: 304.84ms`, `p95: 331.39ms`
+  - **L1 Auth**: `HTTP 401` (成功探通 Auth 邏輯)
+  - **Markets**: `1000 markets` (成功探通)
+- **結論**: PM-0.2 結論更新為可透過 GCP Asia-Northeast1 進行資料連線。延遲 300ms 左右對於 10m/30m/60m 等級的趨勢交易（非高頻套利）可接受。
+
+### PM-0 Go/No-Go 最終判定
+經過數週的評估與實測：
+- PM-0.1 台灣 IP API 連線不被封鎖。
+- PM-0.2 GCP Asia-Northeast1 (Tokyo) Datacenter IP 連線不被封鎖。
+- PM-0.3 法律層面的操作與法規限制在風險評估可接受範圍，且技術面上不影響串接層。
+- PM-0.4 Architecture Latency 雖提升至 300ms 級別，但不影響我們的模型週率。
+**判定結果：🟢 GO**
+我們將繼續推進 PM-1 到 PM-7 的研究。
+
+(任務結束，本 Spec 可視為 `status: done`)

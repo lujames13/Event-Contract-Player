@@ -1,0 +1,75 @@
+{
+    "meta": {
+        "timestamp": "2026-02-20T21:45:14.074744Z",
+        "vm_provider": "GCP",
+        "vm_region": "asia-northeast1-b",
+        "vm_ip_masked": "34.84.xxx.xxx",
+        "python_version": "3.11.2"
+    },
+    "tests": {
+        "geoblock": {
+            "status": "PASS",
+            "blocked": false,
+            "raw_response": {
+                "blocked": false,
+                "ip": "34.84.41.162",
+                "country": "JP",
+                "region": "13"
+            },
+            "latency_ms": 142.78
+        },
+        "clob_latency": {
+            "status": "PASS",
+            "samples": 100,
+            "p50_ms": 304.84,
+            "p95_ms": 331.39,
+            "p99_ms": 407.71,
+            "mean_ms": 306.14,
+            "min_ms": 286.45,
+            "max_ms": 407.71
+        },
+        "gamma_api": {
+            "status": "PASS",
+            "http_status": 200,
+            "events_count": 5,
+            "latency_ms": 79.67
+        },
+        "clob_markets": {
+            "status": "PASS",
+            "http_status": 200,
+            "markets_count": 1000,
+            "latency_ms": 264.37
+        },
+        "clob_orderbook": {
+            "status": "FAIL",
+            "token_id": "73470541315377973562501025254719659796416871135081220986683321361000395461644",
+            "bids_count": 0,
+            "asks_count": 0,
+            "best_bid": null,
+            "best_ask": null,
+            "spread": null,
+            "latency_ms": 329.99
+        },
+        "websocket": {
+            "status": "PASS",
+            "connected": true,
+            "duration_seconds": 0.35,
+            "error": null
+        },
+        "l1_auth": {
+            "status": "PASS",
+            "wallet_address": "0x3d813125f073926f2feD62955523E2C8B8c9e332",
+            "api_key_derived": false,
+            "http_status": 401,
+            "is_geoblocked": false,
+            "error": null
+        }
+    },
+    "conclusion": {
+        "geoblock_passed": true,
+        "datacenter_ip_accepted": true,
+        "clob_latency_acceptable": true,
+        "l1_auth_works": true,
+        "overall": "PASS"
+    }
+}

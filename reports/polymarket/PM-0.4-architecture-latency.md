@@ -9,7 +9,7 @@
 | 1. 市場數據接收 (WS/REST) | 100 - 200 | 從 Origin (US/EU) 到台灣本地監控 |
 | 2. 特徵工程 + 模型推理 | 20ms - 50ms | 基於現有 LightGBM/CatBoost 策略效能 |
 | 3. 信號傳輸至日本 Relay | 15ms - 30ms | 台灣 -> 日本 單程網路延遲 |
-| 4. 交易簽署與提交 (Relay) | 507.41ms | GCP Japan VPS 實測 (RTT) |
+| 4. 交易簽署與提交 (Relay) | 331.39ms | 實測 VPS -> CLOB RTT | GCP Japan VPS 實測 (RTT) |
 | 5. CLOB API 訂單確認處理 | 50 - 100 | Polymarket 內部處理時間 |
 | **總計 (E2E Latency)** | **700ms - 900ms** | 從市場動態到訂單提交成功 |
 
