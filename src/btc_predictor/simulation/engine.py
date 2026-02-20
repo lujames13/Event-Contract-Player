@@ -35,6 +35,12 @@ def process_signal(signal: PredictionSignal, store: DataStore) -> SimulatedTrade
     if bet <= 0:
         logger.debug(f"[{signal.strategy_name}] {signal.timeframe_minutes}m skipped: confidence {signal.confidence:.4f} is too low.")
         return None
+
+    # Check for duplicate trade using strategy name, timeframe and timestamp
+    # Use signal.timestamp which is used as open_time
+    if store.check_trade_exists(signal.strategy_name, signal.timeframe_minutes, signal.timestamp):
+        logger.debug(f"[{signal.strategy_name}] Trade skipped: Duplicate exists for {signal.timestamp} (TF: {signal.timeframe_minutes}m)")
+        return None
         
     # 4. Create SimulatedTrade
     trade = SimulatedTrade(

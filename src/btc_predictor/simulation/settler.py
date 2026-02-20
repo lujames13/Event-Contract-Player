@@ -83,32 +83,36 @@ async def settle_pending_trades(store: DataStore, client=None, bot: Any = None):
                 bet = float(row['bet_amount'])
                 pnl = bet * (payout_ratio - 1) if is_win else -bet
                 
-                await asyncio.to_thread(
+                updated = await asyncio.to_thread(
                     store.update_simulated_trade, row['id'], close_price, result, float(pnl)
                 )
-                logger.info(f"Trade {row['id']} settled: {result} | PnL: {pnl:.4f}")
                 
-                # Discord Notification
-                if bot:
-                    trade_obj = SimulatedTrade(
-                        id=row['id'],
-                        strategy_name=row['strategy_name'],
-                        direction=row['direction'],
-                        confidence=row['confidence'],
-                        timeframe_minutes=timeframe_minutes,
-                        bet_amount=bet,
-                        open_time=datetime.fromisoformat(row['open_time']),
-                        open_price=open_price,
-                        expiry_time=expiry_dt,
-                        close_price=close_price,
-                        result=result,
-                        pnl=float(pnl),
-                        features_used=json.loads(row['features_used']) if row['features_used'] else {}
-                    )
-                    try:
-                        await bot.send_settlement(trade_obj)
-                    except Exception as e:
-                        logger.error(f"Error sending Discord notification for {row['id']}: {e}")
+                if updated:
+                    logger.info(f"Trade {row['id']} settled: {result} | PnL: {pnl:.4f}")
+                    
+                    # Discord Notification
+                    if bot:
+                        trade_obj = SimulatedTrade(
+                            id=row['id'],
+                            strategy_name=row['strategy_name'],
+                            direction=row['direction'],
+                            confidence=row['confidence'],
+                            timeframe_minutes=timeframe_minutes,
+                            bet_amount=bet,
+                            open_time=datetime.fromisoformat(row['open_time']),
+                            open_price=open_price,
+                            expiry_time=expiry_dt,
+                            close_price=close_price,
+                            result=result,
+                            pnl=float(pnl),
+                            features_used=json.loads(row['features_used']) if row['features_used'] else {}
+                        )
+                        try:
+                            await bot.send_settlement(trade_obj)
+                        except Exception as e:
+                            logger.error(f"Error sending Discord notification for {row['id']}: {e}")
+                else:
+                    logger.warning(f"Trade {row['id']} already settled by another process. Skipping.")
             else:
                 logger.warning(f"Could not find price for {row['id']} at {expiry_str}. Will retry.")
         except Exception as e:

@@ -199,14 +199,31 @@ class DataStore:
                 json.dumps(getattr(trade, 'features_used', {}))
             ))
 
-    def update_simulated_trade(self, trade_id: str, close_price: float, result: str, pnl: float):
-        """Update a trade with settlement results."""
+    def check_trade_exists(self, strategy_name: str, timeframe_minutes: int, open_time: datetime) -> bool:
+        """Check if a trade already exists for the given strategy and time."""
+        open_time_str = open_time.isoformat() if isinstance(open_time, datetime) else open_time
         with self._get_connection() as conn:
-            conn.execute("""
+            # Check for exact match on strategy, timeframe, and open time
+            count = conn.execute("""
+                SELECT COUNT(*) FROM simulated_trades 
+                WHERE strategy_name = ? 
+                AND timeframe_minutes = ? 
+                AND open_time = ?
+            """, (strategy_name, timeframe_minutes, open_time_str)).fetchone()[0]
+            return count > 0
+
+    def update_simulated_trade(self, trade_id: str, close_price: float, result: str, pnl: float) -> bool:
+        """
+        Update a trade with settlement results.
+        Returns True if the update was successful (row modified), False otherwise.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
                 UPDATE simulated_trades 
                 SET close_price = ?, result = ?, pnl = ?
-                WHERE id = ?
+                WHERE id = ? AND close_price IS NULL
             """, (close_price, result, pnl, trade_id))
+            return cursor.rowcount > 0
 
     def get_strategy_summary(self, strategy_name: str) -> dict:
         """回傳指定策略的累計統計摘要。"""
