@@ -209,9 +209,10 @@ PM-0: Access & Legal Feasibility（BLOCKER）
 
 PM-1 ~ PM-7:（PM-0 通過後才展開）
   - [x] PM-1: Market Structure & Lifecycle
-  - [ ] PM-2: Price Feed 行為模式
+  - [x] PM-2.1: Chainlink Oracle 靜態規格
+  - [ ] PM-2.2: Binance vs Chainlink 動態偏差分析（需 48h 數據收集）
   - [x] PM-4: Fee Structure 完整拆解
-  - [ ] PM-5: Market Implied Probability Calibration
+  - [x] PM-5: Market Implied Probability Calibration
   - [ ] PM-3: Order Book Depth & Liquidity
   - [ ] PM-6: 獲利模式可行性
   - [ ] PM-7: Engineering Integration Plan
