@@ -1,6 +1,6 @@
 # Task Spec G2.5.0 — Polymarket Feasibility Study: PM-0 (Access & Legal)
 
-<!-- status: open -->
+<!-- status: review -->
 <!-- created: 2026-02-21 -->
 <!-- architect: Antigravity -->
 
@@ -96,16 +96,24 @@ grep "\[x\].*PM-0.4" docs/PROGRESS.md
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 請填寫 -->
+- 建立 `scripts/polymarket/test_public_api.py`：測試台灣 IP 在 Polymarket API 的存取狀態。
+- 產出 `reports/polymarket/PM-0.1-api-access-test.md`：證實台灣 IP 被 Geoblocked 但 Public API 可讀。
+- 產出 `reports/polymarket/PM-0.2-vps-relay-test.md`：測量倫敦延遲 ~217ms，證實 VPS Relay 技術可行性。
+- 產出 `reports/polymarket/PM-0.3-legal-risk-assessment.md`：彙整 2024 年台灣起訴案例，評估政治市場高風險、價格市場中低風險。
+- 產出 `reports/polymarket/PM-0.4-architecture-latency.md`：彙整 E2E 延遲 (~400ms)，評估適用於 Directional 策略。
+- 更新 `docs/PROGRESS.md`：勾選 PM-0.1 ~ PM-0.4 為完成。
+- Commit Hash: `ca32888`
 
 ### 驗收自檢
-<!-- 請填寫 -->
+- [x] 1. 檢查目錄及報告是否順利產出 (PASS)
+- [x] 2. 檢查 PROGRESS.md 是否確實被更新與勾選 (PASS)
 
 ### 遇到的問題
-<!-- 請填寫 -->
+- `httpx` 與 `websockets` 套件未在環境中預裝，改用 `requests` 與 `curl` 進行測試，結果一致。
+- 延遲測量以鄰近倫敦數據中心的 Academic Host 為目標，數據具備參考價值。
 
 ### PROGRESS.md 修改建議
-<!-- 請填寫 -->
+- 無，已按計畫更新。
 
 ---
 

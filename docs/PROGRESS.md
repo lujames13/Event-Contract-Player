@@ -201,10 +201,10 @@
 **Gate 2.5 推進流程：**
 
 PM-0: Access & Legal Feasibility（BLOCKER）
-  - [ ] PM-0.1: Public API 存取測試（台灣 IP）
-  - [ ] PM-0.2: VPS Relay 可行性測試
-  - [ ] PM-0.3: 台灣法規風險評估
-  - [ ] PM-0.4: E2E Architecture Latency
+  - [x] PM-0.1: Public API 存取測試（台灣 IP）
+  - [x] PM-0.2: VPS Relay 可行性測試
+  - [x] PM-0.3: 台灣法規風險評估
+  - [x] PM-0.4: E2E Architecture Latency
   → Go/No-Go 決策點（由架構師判定）
 
 PM-1 ~ PM-7:（PM-0 通過後才展開）
