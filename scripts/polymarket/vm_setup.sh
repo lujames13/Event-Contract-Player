@@ -11,9 +11,19 @@ python3 --version || { echo "❌ Python3 not found"; exit 1; }
 
 # 2. 安裝最小依賴
 echo "Installing dependencies (requests, eth-account)..."
-pip3 install --user requests eth-account || {
-    echo "⚠️ pip3 install failed, trying with --break-system-packages if on newer Debian/Ubuntu"
-    pip3 install --user requests eth-account --break-system-packages || echo "❌ Failed to install dependencies"
+
+# Try to check if pip is available via python module
+if ! python3 -m pip --version >/dev/null 2>&1; then
+    echo "⚠️ pip not found. Attempting to install python3-pip via apt..."
+    sudo apt-get update && sudo apt-get install -y python3-pip || {
+        echo "❌ Failed to install python3-pip. Please install it manually."
+    }
+fi
+
+# Try installation using python3 -m pip (preferred)
+python3 -m pip install --user requests eth-account || {
+    echo "⚠️ Standard pip install failed, trying with --break-system-packages if on newer Debian/Ubuntu"
+    python3 -m pip install --user requests eth-account --break-system-packages || echo "❌ Failed to install dependencies"
 }
 
 # 3. 記錄 VM 資訊
