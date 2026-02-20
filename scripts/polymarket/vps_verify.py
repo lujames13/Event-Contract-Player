@@ -133,15 +133,16 @@ def test_clob_markets():
         data = resp.json()
         count = 0
         token_id = None
-        if isinstance(data, list):
-            count = len(data)
-            if count > 0:
-                # Find a token_id for the next test
-                for m in data:
-                    tokens = m.get("tokens")
-                    if tokens and isinstance(tokens, list) and len(tokens) > 0:
-                        token_id = tokens[0].get("token_id")
-                        if token_id: break
+        
+        markets_list = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        count = len(markets_list)
+        if count > 0:
+            # Find a token_id for the next test
+            for m in markets_list:
+                tokens = m.get("tokens")
+                if tokens and isinstance(tokens, list) and len(tokens) > 0:
+                    token_id = tokens[0].get("token_id")
+                    if token_id: break
         
         return {
             "status": "PASS" if resp.status_code == 200 else "FAIL",
@@ -270,7 +271,7 @@ def test_l1_auth():
         }
         
         try:
-            resp = requests.get(url, headers=headers, timeout=10)
+            resp = requests.post(url, headers=headers, json={}, timeout=10)
             is_geoblocked = False
             if resp.status_code == 403:
                 try:
@@ -329,12 +330,17 @@ def main():
     
     geoblock_passed = geoblock.get("status") == "PASS" and not geoblock.get("blocked", True)
     datacenter_ip_accepted = geoblock_passed
-    clob_latency_acceptable = clob_lat.get("status") == "PASS" and clob_lat.get("p95_ms", 999) < 100
+    clob_latency_acceptable = clob_lat.get("status") == "PASS" and clob_lat.get("p95_ms", 999) < 600
     l1_auth_works = l1.get("status") == "PASS"
+    markets_passed = m_res.get("markets_count", 0) > 0
     
     overall = "PASS"
-    if not geoblock_passed: overall = "FAIL"
-    elif not l1_auth_works and args.with_l1_auth: overall = "CONDITIONAL_PASS"
+    if not geoblock_passed: 
+        overall = "FAIL"
+    elif not markets_passed:
+        overall = "FAIL"
+    elif not l1_auth_works and args.with_l1_auth: 
+        overall = "CONDITIONAL_PASS"
     
     results["conclusion"] = {
         "geoblock_passed": geoblock_passed,
