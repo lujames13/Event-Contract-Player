@@ -400,6 +400,8 @@ uv run pytest -v
 ### PROGRESS.md 修改建議
 - 無。目前的拆分 (PM-2.1 / PM-2.2) 已能準確反映進度。
 
+**Commit Hash:** 64c784b
+
 ---
 
 ## Review Agent 回報區
