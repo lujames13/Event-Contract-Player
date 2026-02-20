@@ -1,0 +1,69 @@
+{
+    "meta": {
+        "timestamp": "2026-02-20T20:52:09.402739Z",
+        "vm_provider": "GCP",
+        "vm_region": "europe-west2-c",
+        "vm_ip_masked": "34.39.xxx.xxx",
+        "python_version": "3.11.2"
+    },
+    "tests": {
+        "geoblock": {
+            "status": "PASS",
+            "blocked": true,
+            "raw_response": {
+                "blocked": true,
+                "ip": "34.39.63.47",
+                "country": "GB",
+                "region": "ENG"
+            },
+            "latency_ms": 100.13
+        },
+        "clob_latency": {
+            "status": "PASS",
+            "samples": 100,
+            "p50_ms": 74.97,
+            "p95_ms": 89.56,
+            "p99_ms": 162.14,
+            "mean_ms": 77.01,
+            "min_ms": 67.18,
+            "max_ms": 162.14
+        },
+        "gamma_api": {
+            "status": "PASS",
+            "http_status": 200,
+            "events_count": 5,
+            "latency_ms": 89.31
+        },
+        "clob_markets": {
+            "status": "PASS",
+            "http_status": 200,
+            "markets_count": 0,
+            "latency_ms": 130.69
+        },
+        "clob_orderbook": {
+            "status": "SKIPPED",
+            "error": "No token_id provided"
+        },
+        "websocket": {
+            "status": "PASS",
+            "connected": true,
+            "duration_seconds": 0.12,
+            "error": null
+        },
+        "l1_auth": {
+            "status": "PASS",
+            "wallet_address": "0x7717A6Bc6f45c7924C821BA66A73dEdB75C49d31",
+            "api_key_derived": false,
+            "http_status": 405,
+            "is_geoblocked": false,
+            "error": null
+        }
+    },
+    "conclusion": {
+        "geoblock_passed": false,
+        "datacenter_ip_accepted": false,
+        "clob_latency_acceptable": true,
+        "l1_auth_works": true,
+        "overall": "FAIL"
+    }
+}

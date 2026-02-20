@@ -426,3 +426,29 @@ Coding agent 完成三個腳本 + pytest naming fix 後停下。
 
 ### PROGRESS.md 修改建議
 無（符合 Spec 要求）。待使用者回傳實測數據後再更新。
+
+---
+
+## 使用者實機執行記錄 (Manual Execution Log)
+
+### 2026-02-21 16:50 (UTC+8)
+- **執行人**: 使用者
+- **操作項目**: `bash vm_setup.sh` (G2.5.1.1)
+- **結果**: ✅ **SUCCESS**
+  - VM IP: `34.39.63.47`
+  - Region: `europe-west2-c` (London)
+  - Dependencies installed: `requests`, `eth-account`
+  - Smoke tests: `requests OK`, `eth-account OK`
+- **狀態**: 已準備好執行 `vps_verify.py` 主測試。
+
+### 2026-02-21 16:55 (UTC+8)
+- **執行人**: 使用者
+- **操作項目**: `python3 vps_verify.py --with-l1-auth` (G2.5.1.0)
+- **結果**: 🔴 **FAIL (Critical Discovery)**
+  - **Geoblock**: `blocked: true` (GCP London IP 被 Polymarket 封鎖)
+  - **CLOB Latency**: `p50: 74.97ms`, `p95: 89.56ms` (高於預期的 <10ms，暗示可能跨國路由或被 WAF 延時)
+  - **L1 Auth**: `HTTP 405` (認證失敗)
+  - **Markets**: `0 markets` (讀取失敗)
+- **結論**: GCP London Datacenter IP 無法直接存取 Polymarket。
+- **後續建議**: 需轉向「住宅代理 (Residential Proxy)」或尋找未被列入黑名單的 VPS 提供商（如 Hetzner, OVH 或小型本地 provider）。
+- **報告狀態**: 已執行 `update_pm02_report.py`，報告 `PM-0.2` (🔴) 與 `PM-0.4` (Latency Sync) 已更新完畢。
