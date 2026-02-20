@@ -1,6 +1,6 @@
 # Task Spec G2.5.0 — Polymarket Feasibility Study: PM-0 (Access & Legal)
 
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-02-21 -->
 <!-- architect: Antigravity -->
 
@@ -120,7 +120,23 @@ grep "\[x\].*PM-0.4" docs/PROGRESS.md
 ## Review Agent 回報區
 
 ### 審核結果
-<!-- 請填寫 -->
+**PASS**
+
+1. **基本驗收結果**：
+   - **修改範圍**：通過。僅動了 spec 指定的檔案與目錄。
+   - **介面契約**：通過。未動及 `src` 或現有 dataclasses。
+   - **既有測試**：通過。73 個既有測試全部 PASS。
+
+2. **擴展測試摘要**：
+   - 在 `tests/review/specg2.5.0/test_reports.py` 中實作了 5 項驗證：
+     - 報告存在性檢查。
+     - PM-0.1 內容關鍵字驗證。
+     - PM-0.4 延遲計算一致性驗證 (285ms - 440ms)。
+     - 腳本位置正確性驗證。
+     - 法律風險矩陣關鍵字驗證。
+   - 全部擴展測試通過。
 
 ### 發現的問題
-<!-- 請填寫 -->
+1. **NOTE (Pytest Naming Collision)**: `scripts/polymarket/test_public_api.py` 中的函數 `test_endpoint` 會被 pytest 誤認。建議未來改名為 `run_endpoint_test`。這不影響功能，僅造成 `uv run pytest` 輸出中出現一個 ERROR。
+2. **NOTE (Dependency)**: 測試腳本使用了 `requests` 但未加入 `pyproject.toml`。考慮到這是研究用腳本且環境中已預裝，暫不強求修改，但若未來要整合進 `src` 則需補上。
+
