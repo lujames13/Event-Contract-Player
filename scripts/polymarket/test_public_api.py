@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-def test_endpoint(name, url, method="GET", data=None):
+def check_endpoint(name, url, method="GET", data=None):
     print(f"Testing {name}: {url}")
     start_time = time.time()
     try:
@@ -56,7 +56,7 @@ def main():
     
     results = []
     for name, url in endpoints:
-        res = test_endpoint(name, url)
+        res = check_endpoint(name, url)
         results.append(res)
         time.sleep(1) # Be nice
         
