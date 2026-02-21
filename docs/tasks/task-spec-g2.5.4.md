@@ -406,16 +406,40 @@ uv run pytest -v
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+G2.5.4 審查結果
+PM-5 Calibration 報告的關鍵問題
+PM-5 的結論是 🔴 Market is Well-Calibrated，但我在報告和分析腳本中看到幾個需要關注的品質問題：
+1. 價格數據取樣點可疑： analyze_calibration.py 用 valid_prices[-1] 作為 implied probability——即 price history 的最後一筆有效價格。但在接近結算時，market price 會快速收斂到 0 或 1（因為 BTC 價格已經趨向確定）。如果 [-1] 抓到的是結算前最後幾秒的價格，那它已經 near-certainty 了，calibration 當然好。真正有意義的是開盤後 30-60 秒的 mid-market price——那才是我們實際能交易的時間點。報告中 97% 的樣本落在 40-60% bucket 反而暗示數據可能抓到了正確的中段價格，但腳本邏輯值得二次確認。
+2. Sub-group analysis 缺失： task spec 明確要求時段分組、波動率分組、40-60% 區間深入分析，但報告只有整體的 calibration curve，沒有任何 sub-group breakdown。這是 PM-5 spec 中最有價值的分析面向——如果特定時段（例如亞洲時段流動性低時）有系統性偏差，整體 Brier score 會被其他時段稀釋掉。
+3. Brier Score 解讀： 0.2489 vs baseline 0.25，改善僅 0.46%。但更重要的指標不是整體 Brier score，而是 conditional accuracy in the 45-55% band。報告確實提到了 45-50% bucket deviation +1.15% 和 50-55% deviation +0.26%，但沒有附上 confidence interval，500 個 market 在 40-50% bucket 有 182 個，binomial 95% CI 大約是 ±7%，所以 +1.15% 的 deviation 根本不顯著。
+PM-2.1 Chainlink 報告
+Coding agent 回報看起來合理。investigate_chainlink.py 成功查詢了 Polygon aggregator contract，確認了 heartbeat 和 deviation threshold。
 
-### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+---
 
-### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+## Coding Agent 回覆區 (V2 - 依據審查回報修復)
 
-### 發現的問題
-<!-- 具體問題描述 -->
+### 實作結果
+- 修正 `scripts/polymarket/analyze_calibration.py`：
+  - **價格取樣點修正**：不再使用結算前最後一筆有效價格（`valid_prices[-1]`），而是找到開盤後 30-60 秒（`target_t = start_ts + 45`）最接近的中段價格，以真實反映了我們實際交易時的定價。
+  - **平行處理加速**：改用 `concurrent.futures.ThreadPoolExecutor`，同時處理 API 請求，大幅縮短了 1000 筆事件的歷史拉取時間。
+  - **分組分析**：加入按交易時段（亞洲/歐洲/美國）與波動率（利用本地 SQLite 的 `ohlcv` 表擷取同時段 BTC 1m 波動率）的分組統計。
+- 產出 `reports/polymarket/PM-5-calibration-analysis.md`：
+  - 更新了包含 95% 信心區間的結果，並附上方格分組深度分析。結果依舊顯示 40-60% 區間的定價偏差極微弱（+1.7% / -1.1%），未能超出統計誤差 +-5.6% 持續證明市場 Highly Calibrated。
+
+### 驗收自檢
+- [x] 報告檔案存在
+- [x] 腳本檔案存在且可執行
+- [x] PM-2.1 報告包含關鍵參數 (heartbeat, deviation, polygon)
+- [x] PM-5 報告包含 calibration 分析 (brier, bucket, 🔴 結論)
+- [x] PROGRESS.md 更新
+- [x] 既有測試仍通過 (已執行 pytest)
+
+### 遇到的問題
+- `interval=max` 僅返回 10 分鐘級別 candles。因為需求為開盤後約 45 秒之報價，特別改為先嘗試 `interval=1d` 取 1 分鐘級別資料。
+- Gamma API `/events` 端點如果缺少 `order=createdAt` 參數，會預設抓最早的資料（2024年初），已於查詢中加入排序，保證抓取近期 5m 數據。
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+- 無。
+
+**Commit Hash:** 0550735
