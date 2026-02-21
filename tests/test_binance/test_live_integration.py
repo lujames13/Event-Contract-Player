@@ -7,7 +7,7 @@ from pathlib import Path
 from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy
 from btc_predictor.simulation.engine import process_signal
-from btc_predictor.simulation.settler import settle_pending_trades
+from btc_predictor.binance.settler import settle_pending_trades
 from btc_predictor.models import PredictionSignal, SimulatedTrade
 
 @pytest.fixture
@@ -111,10 +111,10 @@ async def test_end_to_end_pipeline(temp_db, sample_data):
     store.save_ohlcv(ohlcv_expiry, "BTCUSDT", "1m")
     
     # Run settlement (mocking time to be after expiry)
-    import btc_predictor.simulation.settler
+    import btc_predictor.binance.settler
     from unittest.mock import patch
     
-    with patch('btc_predictor.simulation.settler.datetime') as mock_dt:
+    with patch('btc_predictor.binance.settler.datetime') as mock_dt:
         mock_dt.now.return_value = trade.expiry_time + timedelta(minutes=1)
         # We need to mock fromisoformat too because it's called in settler.py
         mock_dt.fromisoformat.side_effect = lambda x: datetime.fromisoformat(x)

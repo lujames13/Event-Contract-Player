@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 from binance import AsyncClient
 
 # Add src to sys.path to allow imports from btc_predictor
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 
 from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.infrastructure.pipeline import DataPipeline
-from btc_predictor.simulation.settler import settle_pending_trades, settle_pending_signals
+from btc_predictor.binance.settler import settle_pending_trades, settle_pending_signals
 from btc_predictor.strategies.registry import StrategyRegistry
 from btc_predictor.utils.config import load_constants
 from btc_predictor.discord_bot.bot import EventContractBot

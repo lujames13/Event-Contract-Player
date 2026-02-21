@@ -8,7 +8,7 @@ import pandas as pd
 from pathlib import Path
 
 # Add src to sys.path to allow imports from btc_predictor
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 
 from btc_predictor.infrastructure.store import DataStore
 

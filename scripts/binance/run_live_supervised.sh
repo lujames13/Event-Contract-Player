@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 LOG_DIR="$PROJECT_DIR/logs"
 PID_FILE="$LOG_DIR/live.pid"
 
@@ -48,7 +48,7 @@ while true; do
     
     cd "$PROJECT_DIR"
     # Pass all arguments to run_live.py
-    PYTHONPATH=src uv run python scripts/run_live.py "$@" >> "$LOG_FILE" 2>&1 &
+    PYTHONPATH=src uv run python scripts/binance/run_live_binance.py "$@" >> "$LOG_FILE" 2>&1 &
     CHILD_PID=$!
     echo "$CHILD_PID" > "$PID_FILE"
     

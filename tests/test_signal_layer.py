@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.models import PredictionSignal
-from btc_predictor.simulation.settler import settle_pending_signals
+from btc_predictor.binance.settler import settle_pending_signals
 import uuid
 import os
 

@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from btc_predictor.infrastructure.store import DataStore
-from btc_predictor.simulation.settler import settle_pending_trades
+from btc_predictor.binance.settler import settle_pending_trades
 from dataclasses import dataclass
 from typing import Optional
 
@@ -79,10 +79,10 @@ async def test_settle_trades_flat_price(temp_db):
     store.save_ohlcv(ohlcv_df, "BTCUSDT", "1m")
     
     # Mock datetime.now to be after expiry
-    import btc_predictor.simulation.settler
+    import btc_predictor.binance.settler
     from unittest.mock import patch
     
-    with patch('btc_predictor.simulation.settler.datetime') as mock_datetime:
+    with patch('btc_predictor.binance.settler.datetime') as mock_datetime:
         mock_datetime.now.return_value = expiry + timedelta(minutes=5)
         mock_datetime.fromisoformat.side_effect = lambda x: datetime.fromisoformat(x)
         
