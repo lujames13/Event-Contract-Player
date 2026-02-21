@@ -17,7 +17,8 @@ def _process_fold(
     ohlcv: pd.DataFrame,
     strategy: BaseStrategy,
     timeframe_minutes: int,
-    payout_ratio: float
+    payout_ratio: float,
+    settlement_condition: str = ">"
 ) -> List[SimulatedTrade]:
     """Process a single walk-forward fold."""
     # Create a local copy of the strategy to avoid state sharing
@@ -62,11 +63,17 @@ def _process_fold(
                 close_price = float(fold_data.loc[expiry_time, 'close'])
                 open_price = float(fold_data.loc[ts, 'close'])
                 
-                # Result logic: higher wins if close > open
-                if signal.direction == "higher":
-                    is_win = close_price > open_price
+                # Result logic:
+                if settlement_condition == ">=":
+                    if signal.direction == "higher":
+                        is_win = close_price >= open_price
+                    else:
+                        is_win = close_price < open_price
                 else:
-                    is_win = close_price < open_price
+                    if signal.direction == "higher":
+                        is_win = close_price > open_price
+                    else:
+                        is_win = close_price < open_price
                     
                 result = "win" if is_win else "lose"
                 pnl = bet * (payout_ratio - 1) if is_win else -bet
@@ -96,7 +103,8 @@ def run_backtest(
     train_days: int = 60,
     test_days: int = 7,
     step_days: Optional[int] = None,
-    n_jobs: int = -2 # Use all but one core by default
+    n_jobs: int = -2, # Use all but one core by default
+    platform: str = "binance"
 ) -> List[SimulatedTrade]:
     """
     Run a walk-forward backtest using parallel processing for folds.
@@ -114,8 +122,14 @@ def run_backtest(
         step_days = test_days
         
     constants = load_constants()
-    payout_ratios = constants.get("event_contract", {}).get("payout_ratio", {})
-    payout_ratio = payout_ratios.get(timeframe_minutes, 1.85)
+    
+    if platform == "polymarket":
+        payout_ratio = 2.0
+        settlement_condition = ">="
+    else:
+        payout_ratios = constants.get("event_contract", {}).get("payout_ratio", {})
+        payout_ratio = payout_ratios.get(timeframe_minutes, 1.85)
+        settlement_condition = ">"
     
     # 1. Start time of the first test window
     start_time = ohlcv.index[0] + timedelta(days=train_days)
@@ -137,7 +151,7 @@ def run_backtest(
     # 3. Parallelize over folds
     results = Parallel(n_jobs=n_jobs, backend="threading")(
         delayed(_process_fold)(
-            f_start, f_end, train_days, ohlcv, strategy, timeframe_minutes, payout_ratio
+            f_start, f_end, train_days, ohlcv, strategy, timeframe_minutes, payout_ratio, settlement_condition
         ) for f_start, f_end in folds
     )
     

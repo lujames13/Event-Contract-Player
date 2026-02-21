@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--start-date", type=str, help="Backtest start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", type=str, help="Backtest end date (YYYY-MM-DD)")
     parser.add_argument("--n-jobs", type=int, default=-2, help="Parallel jobs (-1: all, -2: all-1)")
+    parser.add_argument("--platform", type=str, default="binance", help="Trading platform (binance or polymarket)")
     
     args = parser.parse_args()
     
@@ -77,7 +78,8 @@ def main():
         timeframe_minutes=args.timeframe,
         train_days=args.train_days,
         test_days=args.test_days,
-        n_jobs=args.n_jobs
+        n_jobs=args.n_jobs,
+        platform=args.platform
     )
     
     if not trades:

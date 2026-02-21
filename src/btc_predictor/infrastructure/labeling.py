@@ -5,10 +5,11 @@ from typing import Optional
 def add_direction_labels(
     df: pd.DataFrame, 
     timeframe_minutes: int,
-    price_col: str = "close"
+    price_col: str = "close",
+    settlement_condition: str = ">"
 ) -> pd.DataFrame:
     """
-    Add direction labels for Event Contract prediction.
+    Add direction labels for prediction.
     
     The label for timestamp 't' represents the price direction at 't + timeframe_minutes'.
     label = 1 (Higher) if price(t + timeframe_minutes) > price(t)
@@ -58,9 +59,12 @@ def add_direction_labels(
     
     df_labeled = df.copy()
     
-    # label = 1 if future_price > current_price else 0
+    # label = 1 if future_price > current_price (or >= depending on settlement_condition)
     # Note: We use .values for comparison to avoid index matching issues if any
-    condition = (future_prices > df_labeled[price_col])
+    if settlement_condition == ">=":
+        condition = (future_prices >= df_labeled[price_col])
+    else:
+        condition = (future_prices > df_labeled[price_col])
     df_labeled["label"] = condition.astype(float)
     
     # Mark rows where future_price is NaN as NaN label
@@ -73,7 +77,8 @@ def calculate_single_label(
     df: pd.DataFrame,
     open_time: pd.Timestamp,
     timeframe_minutes: int,
-    price_col: str = "close"
+    price_col: str = "close",
+    settlement_condition: str = ">"
 ) -> Optional[int]:
     """
     Calculate label for a specific open_time and timeframe.
@@ -90,4 +95,7 @@ def calculate_single_label(
     open_price = df.loc[open_time, price_col]
     close_price = df.loc[expiry_time, price_col]
     
-    return 1 if close_price > open_price else 0
+    if settlement_condition == ">=":
+        return 1 if close_price >= open_price else 0
+    else:
+        return 1 if close_price > open_price else 0
