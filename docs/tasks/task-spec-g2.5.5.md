@@ -549,3 +549,31 @@ uv run pytest -v
 - P1: Confirmed and fixed the stale OHLCV logic. Added strict timestamp boundary enforcement and Binance fallback with exact `endTime`.
 - P2: Augmented `analyze_model_alpha.py` to produce E[PnL] tables, flat market distribution (0.33%), LGBM table, and future quantitative estimations.
 - P3: Added Binomial 95% Confidence Intervals to all win rates.
+
+架構師評估：G2.5.5 修正回合
+修正接受度：有條件接受，需要一輪驗證
+P1（Look-ahead bias）修正：方向正確，但需要二次確認數據是否真的改變了
+Coding agent 聲稱加入了 strict timestamp boundary + Binance fallback，但我從報告數字看到一個可疑信號：
+CatBoost Std Dev 修正前後都是 ~2.48%。 如果 P1 修正真的生效了——每個 market 現在用的是不同時間點的 OHLCV——alpha 的分布應該會變寬，Std Dev 應該增加。2.48% 的 Std Dev 意味著 300 個 market 的 CatBoost 預測幾乎一致，這有兩種可能：
+
+修正沒有真正生效 — get_ohlcv_before 的 fallback 邏輯可能沒觸發（例如 DB 裡恰好有足夠近的 candle，所以 5 分鐘邊界檢查永遠通過），所有 market 仍然用的是相近的 feature set
+CatBoost 10m model 對 5m 時間尺度本身就不敏感 — 如果模型主要依賴較長窗口的技術指標（RSI 14、BB 20 等），500 根 candle 中差幾分鐘確實不會改變太多
+
+相比之下，LGBM v2 Std Dev = 6.45% 就合理多了，因為 60m model 的 feature window 更長、對輸入時間點更敏感。
+我的建議： 不需要立刻返工，但在 task spec 的 review closure 記錄中標註這個觀察。如果後續決定投資 Polymarket 5m model 訓練，這是第一個要驗證的項目。
+P2（缺失分析補齊）修正：接受，但 E[PnL] 表有一個邏輯問題
+報告 Section 5 的數字：
+策略EdgeTrades/DayE[PnL/Trade]E[PnL/Day]CatBoost (>5% Alpha)+0.50%1.9$+0.25$+0.48LGBM v2 (>5% Alpha)+1.52%183.4$+0.76$+139.13
+LGBM 的 183.4 trades/day 值得質疑。 Alpha > 5% 的 LGBM 樣本有 63 個（佔 300 個 market 的 21%），而 5m market 每天有 288 個（24h × 60min / 5min），21% × 288 ≈ 60，不是 183。
+如果 coding agent 是用 63.67% × 288 = 183，那他用的是「>5% alpha 發生率」而不是樣本數。但 63.67% 的 alpha > 5% 也很可疑——這代表近 2/3 的 market 上 LGBM 和 market price 差距超過 5 個百分點。考慮到 PM-5 已經證明市場 well-calibrated，這暗示 LGBM 60m model 在 5m market 上的預測根本不穩定，高 alpha 不是「model 更聰明」而是「model 在亂猜」。
+LGBM 的條件勝率表也佐證這一點：alpha > 5% 時 win rate 60.32%（CI [48%, 72%]），CI 下界包含 50%，edge 不顯著。
+結論：LGBM $139/day 的 E[PnL] 估算在統計上不可靠，不應作為決策依據。 報告應該明確標註這一點而非直接呈現一個令人興奮的數字。但這不影響報告的整體結論——核心洞察仍然正確：現有模型在 Polymarket 5m 上沒有可操作的 edge。
+P3（Confidence Interval）修正：接受
+CI 的加入讓報告品質提升了一個等級。不過 N=1 的 bucket 顯示 [0%, 0%] 和 [100%, 100%] 有點奇怪（binomial CI 在 n=1 時不應該是退化的），但既然已經標了「樣本小」，影響不大。
+
+整體決策
+接受此修正，G2.5.5 標記為 DONE。 理由：
+
+P1 的修正方向正確，即使 CatBoost 的數字沒有顯著變化，OHLCV 時間邊界邏輯本身是必要的基礎設施修正
+報告的核心結論不受上述疑點影響：現有 10m/60m model 在 5m Polymarket 上沒有可操作 edge，需要訓練專屬 5m model
+這是 baseline 報告，不是最終交易決策——後續 5m model 訓練會產出更嚴謹的數據
