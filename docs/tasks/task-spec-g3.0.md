@@ -110,21 +110,26 @@
 
 ### PROGRESS.md 修改建議
 無。
+- Commit Hash: 5fc98c30ca319e6db2063d738a4f71f56414b055
 
 ---
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+### 審核結果：[FAIL]
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+- [x] 1. 核心文件 (`DECISIONS.md`, `ARCHITECTURE.md`, `PROGRESS.md`, `config/project_constants.yaml`) 皆已依照 migration plan 完成更新。
+- [x] 2. `src/btc_predictor/binance/` 與 `src/btc_predictor/polymarket/` 等新目錄皆已建立，且相關檔案成功移入。
+- [x] 3. 執行 `uv run pytest -v`，全部測試通過。
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+- [x] `git diff --name-only` 顯示修改範圍符合預期，包含核心文件、scripts 挪動、tests 挪動。
+- [x] `src/btc_predictor/binance/settler.py` 已成功移動。
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+1. **[BLOCKING] 介面契約未履行**：Task Spec 要求的 `PredictionSignal` 擴充欄位 (`market_slug`, `market_price_up`, `alpha`, `order_type`) 以及新增的 `PolymarketOrder` dataclass 並未在 `src/btc_predictor/models.py` 中實作。這導致其與最新的 `ARCHITECTURE.md` 定義不一致，會 block 後續 G3.1 的開發。
+2. **Review 測試失敗**：執行 `tests/review/specg3.0/test_migration_integrity.py` 發現上述 dataclass 缺失。
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+- 無。
