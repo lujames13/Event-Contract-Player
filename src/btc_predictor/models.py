@@ -4,13 +4,35 @@ from typing import Literal
 
 @dataclass
 class PredictionSignal:
+    # === 通用欄位（Binance + Polymarket 共用）===
     strategy_name: str                                  # e.g. "nbeats_perceiver", "xgboost_v1"
     timestamp: datetime                                 # 預測產生時間 (UTC)
-    timeframe_minutes: Literal[10, 30, 60, 1440]        # 到期時間框架
+    timeframe_minutes: int                              # 到期時間框架
     direction: Literal["higher", "lower"]               # 預測方向
     confidence: float                                   # 0.0 ~ 1.0
     current_price: float                                # 預測時的 BTC index price
-    features_used: dict = field(default_factory=dict)   # 可解釋性：驅動預測的關鍵特徵
+    features_used: list[str] = field(default_factory=list) # 預測使用的特徵清單
+
+    # === Polymarket 擴展欄位 ===
+    market_slug: str | None = None
+    market_price_up: float | None = None
+    alpha: float | None = None
+    order_type: Literal["maker", "taker"] | None = None
+
+@dataclass
+class PolymarketOrder:
+    signal_id: str
+    order_id: str
+    token_id: str
+    side: Literal["BUY", "SELL"]
+    price: float
+    size: float
+    order_type: Literal["GTC", "FOK", "GTD"]
+    status: Literal["OPEN", "FILLED", "PARTIAL", "CANCELLED", "EXPIRED"]
+    placed_at: datetime
+    filled_at: datetime | None = None
+    fill_price: float | None = None
+    fill_size: float | None = None
 
 @dataclass
 class SimulatedTrade:

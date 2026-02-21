@@ -1,6 +1,6 @@
 # Task Spec G3.0 — Polymarket 遷移 Phase 1: 文件遷移與目錄重組
 
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-02-22 -->
 <!-- architect: Antigravity -->
 
@@ -99,18 +99,22 @@
 - 建立並補齊缺失的目錄與 `__init__.py`：`src/btc_predictor/strategies/pm_v1/`, `tests/test_polymarket/`, `src/btc_predictor/binance/`, `src/btc_predictor/polymarket/`。
 - 修復 `scripts/binance/` 底下的腳本 (`fetch_history.py`, `run_live_binance.py`, `train_xgboost_model.py`, `run_live_supervised.sh`) 中的相對匯入路徑（`sys.path.append` 與 `PROJECT_DIR`），確保目錄往下一層後能正確指回 `src/` 與專案根目錄。
 - 修改所有舊的 `btc_predictor.simulation.settler` import 為 `btc_predictor.binance.settler`，確保測試綠燈。
+- 在 `src/btc_predictor/models.py` 中補齊了 `PredictionSignal` 的 Polymarket 擴展欄位 (`market_slug`, `market_price_up`, `alpha`, `order_type`)。
+- 在 `src/btc_predictor/models.py` 中實作了 `PolymarketOrder` dataclass。
+- 修改 `PredictionSignal` 時保持了原始參數順序，並為 `features_used` 與新欄位提供預設值，以確保現有測試與程式碼的相容性。
+- 修正 `features_used` 類型從 `dict` 改為 `list[str]` 以符合 `ARCHITECTURE.md` 定義。
 
 ### 驗收自檢
-- [x] 1. 核心文件皆已更新。
-- [x] 2. `src/btc_predictor/binance/` 與 `src/btc_predictor/polymarket/` 等新目錄皆已建立，且相關檔案 (`settler.py` 及對應 docs/scripts/tests) 成功移入並修正。
-- [x] 3. 執行 `uv run pytest -v`，全部測試通過（無 import errors, 無 test regressions），83 passing。
+- [x] 1. 核心文件皆已更新，核心 dataclass (`PredictionSignal`, `PolymarketOrder`) 與欄位已補齊。
+- [x] 2. `src/btc_predictor/binance/` 與 `src/btc_predictor/polymarket/` 等新目錄皆已建立，且相關檔案成功移入。
+- [x] 3. 執行 `uv run pytest -v`，全部測試通過（含 review 測試），88 passing。
 
 ### 遇到的問題
 無重大技術障礙。先前發現 `settler.py` 遺漏移動，且 `run_live_supervised.sh` 裡面的 `PROJECT_DIR` 路徑沒有因為挪動到 `scripts/binance/` 而往下調整，已一併順利修復。`pipeline.py` 尚未拆分（符合 task spec 中對於有拆分困難的檔案留待 G3.1 的期待）。
 
 ### PROGRESS.md 修改建議
 無。
-- Commit Hash: 5fc98c30ca319e6db2063d738a4f71f56414b055
+- Commit Hash: e0a4587
 
 ---
 
