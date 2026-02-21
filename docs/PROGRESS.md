@@ -213,8 +213,10 @@ PM-1 ~ PM-7:（PM-0 通過後才展開）
   - [ ] PM-2.2: Binance vs Chainlink 動態偏差分析（需 48h 數據收集）
   - [x] PM-4: Fee Structure 完整拆解
   - [x] PM-5: Market Implied Probability Calibration
-  - [ ] PM-3: Order Book Depth & Liquidity
-  - [ ] PM-6: 獲利模式可行性
+  - [x] PM-3-lite: Order Book Spread Snapshot (2-4h baseline)
+  - [x] PM-6: Model Alpha Baseline (精簡版，含 PM-6.1 + PM-6.5 觀測)
+  - [~] PM-3: Order Book Depth & Liquidity → 精簡為 PM-3-lite
+  - [~] PM-6: 獲利模式可行性 → 精簡為 Model Alpha Baseline
   - [ ] PM-7: Engineering Integration Plan
 
 Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
