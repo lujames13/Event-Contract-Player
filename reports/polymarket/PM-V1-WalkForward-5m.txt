@@ -1,0 +1,19 @@
+Loading data for BTCUSDT 1m...
+Loaded 1652680 rows. Range: 2023-01-01 00:00:00+00:00 to 2026-02-21 18:11:00+00:00
+Pre-calculating features...
+Starting walk-forward backtest for pm_v1 (5m)...
+[pm_v1] Starting parallel walk-forward backtest (156 folds, n_jobs=-2)...
+
+========================================
+ BACKTEST REPORT: pm_v1 5m 
+========================================
+Total Trades:       2563
+Total DA (Acc):     55.68%
+Higher DA:          56.98%
+Lower DA:           52.26%
+Total PnL (USDT):   1712.05
+Max Drawdown:       135.68
+Sharpe Ratio:       0.11
+Max Consecutive L:  8
+========================================
+Report saved to reports/backtest_pm_v1_5m_20260222_024331.json
