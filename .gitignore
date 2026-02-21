@@ -208,6 +208,7 @@ marimo/_static/
 marimo/_lsp/
 # Project specific
 reports/*.json
+reports/binance/*.json
 models/
 results/
 logs/
