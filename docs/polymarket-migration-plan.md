@@ -41,7 +41,7 @@
 
 ### 2.1 DECISIONS.md — 修改清單
 
-原則：**Binance EC 段落加 `[ARCHIVED]` 標註但不刪除，新增 Polymarket 段落。**
+原則：**Binance EC 段落加 `[SUSPENDED]` 標註但不刪除，新增 Polymarket 段落。**
 
 #### 需要新增的段落
 
@@ -105,9 +105,9 @@
 
 #### 需要標註的段落
 
-- **§2（Event Contract 規格）**→ 加上 `[ARCHIVED — Binance EC]`
-- **§3（信心度閾值）**→ 加上 `[ARCHIVED — Binance EC]`
-- **§4（風控參數）**→ 加上 `[ARCHIVED — Binance EC]`
+- **§2（Event Contract 規格）**→ 加上 `[SUSPENDED — Binance EC]`
+- **§3（信心度閾值）**→ 加上 `[SUSPENDED — Binance EC]`
+- **§4（風控參數）**→ 加上 `[SUSPENDED — Binance EC]`
 
 #### 保持不變的段落
 
@@ -362,7 +362,7 @@ Binance 和 Polymarket 的專屬程式碼各自收攏在對應子目錄中，共
 project/
 ├── docs/
 │   ├── ARCHITECTURE.md              # 重寫：Polymarket 主線
-│   ├── DECISIONS.md                 # 擴展：§8-10 新增，§2-4 ARCHIVED
+│   ├── DECISIONS.md                 # 擴展：§8-10 新增，§2-4 SUSPENDED
 │   ├── PROGRESS.md                  # 重寫：新 Gate 結構
 │   ├── AGENTS.md                    # 更新
 │   ├── binance/                     # ★ Binance 文件收攏

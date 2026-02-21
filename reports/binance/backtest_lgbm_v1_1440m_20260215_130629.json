@@ -1,0 +1,83 @@
+{
+    "stats": {
+        "total_trades": 3,
+        "total_da": 0.0,
+        "higher_da": 0.0,
+        "lower_da": 0.0,
+        "total_pnl": -16.5,
+        "mdd": 11.0,
+        "sharpe": 0.0,
+        "max_consecutive_losses": 3,
+        "calibration": {
+            "(0.5, 0.6]": {
+                "mean": NaN,
+                "count": 0
+            },
+            "(0.6, 0.7]": {
+                "mean": 0.0,
+                "count": 3
+            },
+            "(0.7, 0.8]": {
+                "mean": NaN,
+                "count": 0
+            },
+            "(0.8, 0.9]": {
+                "mean": NaN,
+                "count": 0
+            },
+            "(0.9, 1.0]": {
+                "mean": NaN,
+                "count": 0
+            }
+        },
+        "cumulative_pnl": [
+            -5.5,
+            -11.0,
+            -16.5
+        ]
+    },
+    "trades": [
+        {
+            "id": "ff28f268-61ec-4785-84bb-006bd9772e36",
+            "strategy_name": "lgbm_v1",
+            "direction": "higher",
+            "confidence": 0.6047195098857726,
+            "timeframe_minutes": 1440,
+            "bet_amount": 5.5,
+            "open_time": "2025-11-12 00:00:00+00:00",
+            "open_price": 103141.5,
+            "expiry_time": "2025-11-13 00:00:00+00:00",
+            "close_price": 101640.66,
+            "result": "lose",
+            "pnl": -5.5
+        },
+        {
+            "id": "32ef3152-0549-4510-878f-299694b78fdd",
+            "strategy_name": "lgbm_v1",
+            "direction": "higher",
+            "confidence": 0.6047195098857726,
+            "timeframe_minutes": 1440,
+            "bet_amount": 5.5,
+            "open_time": "2025-11-13 00:00:00+00:00",
+            "open_price": 101640.66,
+            "expiry_time": "2025-11-14 00:00:00+00:00",
+            "close_price": 99520.43,
+            "result": "lose",
+            "pnl": -5.5
+        },
+        {
+            "id": "ff775e57-7f5f-41af-906e-f8d465f6b38b",
+            "strategy_name": "lgbm_v1",
+            "direction": "higher",
+            "confidence": 0.6047195098857726,
+            "timeframe_minutes": 1440,
+            "bet_amount": 5.5,
+            "open_time": "2025-11-14 00:00:00+00:00",
+            "open_price": 99520.43,
+            "expiry_time": "2025-11-15 00:00:00+00:00",
+            "close_price": 94828.0,
+            "result": "lose",
+            "pnl": -5.5
+        }
+    ]
+}

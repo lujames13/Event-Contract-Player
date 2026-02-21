@@ -5,36 +5,40 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Data Pipeline Layer                       │
-│  Binance WebSocket (1m OHLCV stream)                        │
-│  Binance REST API (歷史回填)                                 │
-│  [未來] Fear & Greed · DXY · CryptoBERT                     │
-└──────────────┬──────────────────────────────────────────────┘
-               │ OHLCV DataFrame（共用，只生成一次）
-               ▼
+│                                                             │
+│  ┌──────────────────────┐  ┌─────────────────────────────┐  │
+│  │ Binance WebSocket    │  │ Polymarket API              │  │
+│  │ (1m OHLCV — 共用特徵) │  │ Gamma (metadata)           │  │
+│  │                      │  │ CLOB (book, prices, trade)  │  │
+│  └──────────┬───────────┘  └──────────┬──────────────────┘  │
+│             │                         │                     │
+│             ▼                         ▼                     │
+│  ┌──────────────────────────────────────────────────┐       │
+│  │ Unified Feature DataFrame                        │       │
+│  │ OHLCV + market_price + alpha + lifecycle_stage   │       │
+│  └─────────────────────┬────────────────────────────┘       │
+└────────────────────────┼────────────────────────────────────┘
+                         │
+                         ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              Strategy Registry (多模型並行)                   │
-│                                                             │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │
-│  │ xgboost_v1   │ │ lgbm_v1      │ │ mlp_v1       │  ...   │
-│  │ (BaseStrategy)│ │ (BaseStrategy)│ │ (BaseStrategy)│        │
+│  │ pm_v1        │ │ pm_v2        │ │ ...          │        │
 │  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘        │
-│         │                │                │                 │
 │         ▼                ▼                ▼                 │
 │    PredictionSignal PredictionSignal PredictionSignal        │
 └──────────────┬──────────────────────────────────────────────┘
-               │ List[PredictionSignal]
+               │
                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               Decision & Simulation Layer                   │
-│  每個 signal 獨立進行：                                      │
-│  信心度 ≥ 閾值? → SimulatedTrade → SQLite        │
-│  統計計算（per strategy × timeframe）                        │
-└──────────┬─────────────────────────┬────────────────────────┘
-           │                         │
-           ▼                         ▼
-   CLI 統計報表 / 回測          Discord Bot
-   (scripts/backtest.py)       /predict  /stats  /models
-                               自動通知（高信心 + 到期結果）
+│               Decision & Execution Layer                    │
+│  Alpha ≥ 閾值? → Maker order via CLOB API (GCP Tokyo VPS)  │
+│  → SimulatedTrade / PolymarketOrder → SQLite                │
+│  Order lifecycle: place → monitor fill → settlement         │
+└──────────────┬──────────────────────┬───────────────────────┘
+               │                      │
+               ▼                      ▼
+        CLI / 回測               Discord Bot
 ```
 
 ---
@@ -54,13 +58,20 @@ from typing import Literal
 
 @dataclass
 class PredictionSignal:
-    strategy_name: str                                  # e.g. "nbeats_perceiver", "xgboost_v1"
-    timestamp: datetime                                 # 預測產生時間 (UTC)
-    timeframe_minutes: Literal[10, 30, 60, 1440]        # 到期時間框架
-    direction: Literal["higher", "lower"]               # 預測方向
-    confidence: float                                   # 0.0 ~ 1.0
-    current_price: float                                # 預測時的 BTC index price
-    features_used: dict = field(default_factory=dict)   # 可解釋性：驅動預測的關鍵特徵
+    # === 通用欄位（Binance + Polymarket 共用）===
+    strategy_name: str
+    timestamp: datetime
+    direction: Literal["higher", "lower"]
+    confidence: float
+    timeframe_minutes: int
+    current_price: float
+    features_used: list[str]
+
+    # === Polymarket 擴展欄位 ===
+    market_slug: str | None = None
+    market_price_up: float | None = None
+    alpha: float | None = None
+    order_type: Literal["maker", "taker"] | None = None
 ```
 
 ### SimulatedTrade
@@ -88,6 +99,27 @@ class SimulatedTrade:
 PnL 計算邏輯：
 - Win: `pnl = bet_amount × (payout_ratio - 1)`（淨利）
 - Lose: `pnl = -bet_amount`
+
+### PolymarketOrder
+
+Polymarket 真實/模擬訂單記錄。
+
+```python
+@dataclass
+class PolymarketOrder:
+    signal_id: str
+    order_id: str
+    token_id: str
+    side: Literal["BUY", "SELL"]
+    price: float
+    size: float
+    order_type: Literal["GTC", "FOK", "GTD"]
+    status: Literal["OPEN", "FILLED", "PARTIAL", "CANCELLED", "EXPIRED"]
+    placed_at: datetime
+    filled_at: datetime | None = None
+    fill_price: float | None = None
+    fill_size: float | None = None
+```
 
 ### RealTrade (Phase 3)
 
@@ -307,6 +339,38 @@ CREATE TABLE prediction_signals (
 CREATE INDEX idx_signals_unsettled ON prediction_signals(expiry_time)
     WHERE actual_direction IS NULL;
 CREATE INDEX idx_signals_strategy ON prediction_signals(strategy_name, timeframe_minutes);
+
+-- Polymarket 市場配置
+CREATE TABLE pm_markets (
+    slug            TEXT PRIMARY KEY,
+    condition_id    TEXT NOT NULL,
+    up_token_id     TEXT NOT NULL,
+    down_token_id   TEXT NOT NULL,
+    start_time      TEXT NOT NULL,
+    end_time        TEXT NOT NULL,
+    price_to_beat   REAL,
+    outcome         TEXT,
+    close_price     REAL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Polymarket 訂單
+CREATE TABLE pm_orders (
+    order_id        TEXT PRIMARY KEY,
+    signal_id       TEXT REFERENCES prediction_signals(id),
+    token_id        TEXT NOT NULL,
+    side            TEXT NOT NULL,
+    price           REAL NOT NULL,
+    size            REAL NOT NULL,
+    order_type      TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    placed_at       TEXT NOT NULL,
+    filled_at       TEXT,
+    fill_price      REAL,
+    fill_size       REAL,
+    pnl             REAL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
 ```
 
 ### Data Pipeline

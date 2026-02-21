@@ -22,6 +22,13 @@
 
 ---
 
+## [SUSPENDED] Gate 0-2: Binance EC 開發歷程
+
+> Binance EC 系統暫停開發，程式碼收攏至 binance/ 子目錄。
+> 詳細歷史記錄保留於下方，供未來復用參考。
+
+---
+
 ## Gate 1：模型實驗池成熟（當前焦點）
 
 **通過條件（全部滿足）：**
@@ -178,9 +185,9 @@
 
 ---
 
-## Polymarket Feasibility Study (Gate 2.5)
+## [COMPLETED] Gate 2.5: Polymarket Feasibility Study
 
-**狀態：** 🔄 ACTIVE — 啟動 PM-0 調查
+**狀態：** ✅ COMPLETED
 
 **動機：** Polymarket 提供完整 CLOB API，解決 Binance EC 無 API 的自動化瓶頸。動態賠率創造方向預測以外的獲利維度。但台灣被列為 close-only 限制地區，需要先解決存取問題再評估 edge 是否可操作。
 
@@ -225,26 +232,55 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 
 ---
 
-## Gate 3：模擬交易統計顯著
-
-> **前提：Gate 2 通過。**
+## Gate 3: Polymarket MVP
 
 **通過條件：**
-- [ ] 每個候選策略 × timeframe ≥ 200 筆 live 模擬交易
-- [ ] Live DA 與回測 DA 的差距 < 5%（確認回測不是過擬合）
-- [ ] 至少 1 個組合 live DA > breakeven + 5% 安全邊際
+- [ ] 至少 1 個 timeframe 的模型 walk-forward DA > 52%（maker breakeven + 安全邊際）
+- [ ] Paper trading 200+ 筆（可跨 timeframe 合計），alpha-filtered 正 PnL
+- [ ] 72 小時 pipeline 穩定運行
+
+### 3.0 遷移與重組
+- [x] 3.0.1 核心文件遷移（DECISIONS / ARCHITECTURE / PROGRESS / constants / AGENTS.md）
+- [x] 3.0.2 目錄結構重組（Binance 收攏、Polymarket 新目錄）
+
+### 3.1 Polymarket 基礎設施
+- [ ] 3.1.1 Gamma API client + CLOB read-only client
+- [ ] 3.1.2 Market lifecycle tracker（偵測當前 5m market）
+- [ ] 3.1.3 Label 邏輯修改（>= 結算條件，平台參數化）
+- [ ] 3.1.4 SQLite schema migration（pm_markets, pm_orders）
+
+### 3.2 模型訓練（多 timeframe 探索）
+- [ ] 3.2.1 Feature engineering（reuse Binance 1m OHLCV + PM market features，timeframe-agnostic）
+- [ ] 3.2.2 pm_v1 訓練（CatBoost 基礎，>= 結算，5m/15m/1h/4h/1d 全跑）
+- [ ] 3.2.3 Walk-forward 回測 × 每個 timeframe（PM 結算條件 + fee 模型）
+- [ ] 3.2.4 Alpha 分析 × 每個 timeframe（model vs market price，找出最佳 timeframe-model 組合）
+
+### 3.3 模擬交易驗證
+- [ ] 3.3.1 Paper trading pipeline（signal + 模擬 maker order）
+- [ ] 3.3.2 Discord Bot 適配（/predict 顯示 alpha，/stats 適配 PM PnL）
+- [ ] 3.3.3 累積 200+ 筆 → 統計顯著性驗證
 
 ---
 
-## Gate 4：真實交易驗證
+## Gate 4: Polymarket Live Trading
 
-> **前提：Gate 3 通過。**
+### 4.1 VPS 交易基礎設施
+- [ ] 4.1.1 GCP Tokyo VPS 部署 + Polygon wallet + USDC 入金
+- [ ] 4.1.2 CLOB API trading client（EIP-712 簽名）
+- [ ] 4.1.3 VPS ↔ 本地通訊機制
+### 4.2 Order Management
+- [ ] 4.2.1 Maker order placement + fill monitoring
+- [ ] 4.2.2 Position management + PnL settlement
+### 4.3 驗證
+- [ ] 4.3.1 小額實盤（$10/trade × 50 trades）
+- [ ] 4.3.2 真實 vs 模擬績效對比 + slippage 分析
 
-**任務清單：**
-- [ ] **4.1** Discord Bot 增加真實交易記錄功能
-- [ ] **4.2** RealTrade 記錄 + 滑價分析
-- [ ] **4.3** 累積 ≥ 50 筆真實交易
-- [ ] **4.4** 真實 vs 模擬勝率對比報告
+---
+
+## Gate 5: 規模化
+- [ ] 5.1 Position sizing 優化
+- [ ] 5.2 多策略並行（pm_v2 等新模型架構）
+- [ ] 5.3 Advanced order types（GTD, 動態 repricing）
 
 ---
 

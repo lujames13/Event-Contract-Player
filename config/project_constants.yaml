@@ -9,6 +9,25 @@ runtime:
   ml_framework: "PyTorch (優先)"
   tech_indicators: "ta-lib (C binding)"
 
+# === 新增：Polymarket 區塊 ===
+polymarket:
+  timeframes: [5, 15, 60, 240, 1440]   # 所有可用 timeframe
+  initial_focus: [5, 15]                # Gate 3 優先探索
+  settlement_condition: ">="
+  oracle: "Chainlink Data Streams (BTC/USD)"
+  taker_fee_base_rate: 0.0222
+  maker_fee: 0.0
+  maker_rebate: true
+  min_order_size: 1
+  breakeven_winrate:
+    maker: 0.500
+    taker_at_p50: 0.5156
+  vps_region: "asia-northeast1"
+
+alpha_thresholds:                       # 每個策略 × timeframe 獨立校準
+  pm_v1: null                           # 待模型訓練後填入
+
+# === [SUSPENDED] Binance EC 區塊 ===
 event_contract:
   timeframes: [10, 30, 60, 1440]       # 分鐘
   payout_ratio:
@@ -36,6 +55,7 @@ simulation:
   trigger: "continuous"
   min_trades_for_significance: 200
 
+# [SUSPENDED]
 confidence_thresholds:                  # breakeven_winrate + 5% 安全邊際
   10: 0.52    # 從 0.606 調整，依據 174 筆 live signal 校準分析（2026-02-20）
   30: 0.591

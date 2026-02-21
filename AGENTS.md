@@ -93,25 +93,24 @@ project/
 ├── src/
 │   └── btc_predictor/                 # 主套件（uv init 的 src layout）
 │       ├── __init__.py
-│       ├── data/
-│       │   ├── pipeline.py            # Binance WebSocket + REST 數據抓取
-│       │   └── store.py               # SQLite 讀寫
-│       ├── strategies/
-│       │   ├── base.py                # 策略基類
-│       │   ├── nbeats_perceiver/
-│       │   ├── xgboost_direction/
-│       │   └── freqai_wrapper/
-│       └── simulation/
-│           ├── engine.py              # 模擬倉引擎
-│           └── stats.py               # 統計計算
-├── discord_bot/
-│   └── bot.py                         # Phase 3
+│       ├── models.py
+│       ├── polymarket/                # Polymarket 即時交易、API 客戶端
+│       ├── binance/                   # Binance 原有收攏程式碼
+│       ├── infrastructure/            # 共用基礎設施 (store, pipeline)
+│       ├── strategies/                # 共用策略註冊與各策略實作
+│       ├── backtest/                  # 共用回測引擎
+│       ├── simulation/                # 共用風控
+│       ├── discord_bot/               # 共用 Bot
+│       └── utils/
 ├── scripts/
+│   ├── polymarket/                    # Polymarket 報告調查腳本
+│   ├── binance/                       # Binance 實行腳本收攏
+│   ├── run_live.py                    # 即時運行入口
 │   ├── backtest.py                    # 歷史回測
-│   ├── fetch_history.py               # 歷史數據抓取
-│   └── run_live.py                    # 即時運行入口
+│   └── analyze_calibration.py         # 校準分析
 └── tests/
-    ├── test_data/
+    ├── test_polymarket/               # Polymarket 測試
+    ├── test_binance/                  # Binance 測試
     ├── test_strategies/
-    └── test_simulation/
+    └── [共用測試]
 ```
