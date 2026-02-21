@@ -459,7 +459,9 @@ uv run pytest -v
    - 建立 `scripts/polymarket/analyze_spread_lag.py` 進行 spread 分佈、slippage 深度分析及 Binance price lead 觀測。
    - 產出 `reports/polymarket/PM-3-lite-spread-snapshot.md` 報告。
 2. **PM-6 Baseline 實作**：
-   - 建立 `scripts/polymarket/analyze_model_alpha.py`，成功載入 `catboost_v1` (10m) 進行 300 個 5m market 的離線推理與 alpha 計算。
+   - 發現並修復 P1 (Look-ahead bias)：重新加入嚴格的 OHLCV 時間邊界檢查，若 DB 中最新的 candle 與目標 market start time 差距大於 5 分鐘，即觸發 Binance `api/v3/klines` fallback 並以 `endTime=start_ms-1` 防止未來數據混入。
+   - 補齊 P2 (缺失分析)：加入 Expected PnL 估算表、">=" 結算條件差異統計、LGBM v2 條件勝率表、與優化方向量化預估。
+   - 補齊 P3 (Confidence Interval)：在所有勝率後方加入 Binomial 95% CI。
    - 產出 `reports/polymarket/PM-6-model-alpha-baseline.md` 報告。
 3. **數據收集**：
    - `orderbook_snapshots.jsonl` 已開始累積，初步分析顯示 5m 市場 spread 穩定在 0.0100。
@@ -478,26 +480,72 @@ uv run pytest -v
 1. **API 存取問題**：原先 `Gamma API` 回傳許多已過期但標記為 `closed: false` 的市場，導致 `CLOB API /book` 回傳 404。已增加 `endDate` 過濾邏輯解決。
 2. **Talib 依賴**：推理腳本需在 `uv run` 環境下執行以正確讀取 `talib` bindings。
 3. **5s 採樣精度**：對於 E2E 2s 的延遲分析，5s 採樣過於粗糙，目前的 Lag 分析僅具參考價值。
+4. **Timeframe Mismatch**：修復 OHLCV 取樣邊界後，證明 10m/60m 的 model 在 5m polymarket 的 win rate 的確不如預期理想，Alpha > 5% 的樣本能提供非常輕微的 edge，需要專屬 5m model 來提升 Edge。
 
 ### PROGRESS.md 修改建議
 無，已按 task spec 完成更新。
 
-**Commit Hash**: 6af4df2
+**Commit Hash**: 48a3735
 
 ---
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+### 審核結果：PASS WITH NOTES
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+- ✅ 1. 報告檔案存在
+- ✅ 2. 腳本檔案存在且可執行
+- ✅ 3. PM-3-lite 報告包含關鍵指標
+- ✅ 4. PM-6 報告包含 alpha 分析
+- ✅ 5. 原始數據存在
+- ✅ 6. PROGRESS.md 更新
+- ✅ 7. 既有測試仍通過 (83/83)
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+符合封閉清單，未動 src/ 或 tests/。
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+
+#### 🔴 P1：look-ahead bias 風險 — analyze_model_alpha.py 的 OHLCV 時間邊界
+
+`analyze_model_alpha.py` 中呼叫 `store.get_ohlcv("BTCUSDT", "1m", limit=500)` 時，**是否有傳入 `end_time=market_start_ts` 參數？**
+
+如果沒有，所有 300 個 market 可能共用同一批「DB 中最新的 500 根 candle」做推理，導致：
+1. 所有 market 的 feature 幾乎相同 → alpha 分布被壓縮（這和 CatBoost Std Dev 只有 2.47% 吻合）
+2. 整個條件勝率分析失效
+
+**需要確認：**
+- 打開 `analyze_model_alpha.py`，找到 `get_ohlcv` 的呼叫，確認是否有 `end_time` 或等效的時間邊界參數
+- 如果沒有：修復為 `store.get_ohlcv("BTCUSDT", "1m", limit=500, end_time=start_ts)`，或用 Binance REST fallback 並帶入 `endTime`
+- 修復後重跑推理，更新 PM-6 報告
+
+#### 🟡 P2：PM-6 報告缺少 task spec 要求的分析項目
+
+對照 task spec G2.5.5.2 的分析要求，以下項目缺失：
+
+1. **Expected PnL 估算表**（task spec 第 5 項）— 完全缺失。需要產出：
+
+| 策略 | 預估 Edge (%) | 預估 Trades/Day | E[PnL/Trade] ($50) | E[PnL/Day] |
+|------|-------------|----------------|-------------------|------------|
+
+2. **結算條件差異影響**（task spec 第 4 項）— 需要統計 300 個 market 中有多少個 close ≈ open（例如 |close - open| < $1），量化 `>=` vs `>` 的影響
+3. **LGBM v2 的條件勝率表**（task spec 第 2 項）— 目前只有 CatBoost，LGBM 完全缺失
+4. **優化方向的量化預估**（task spec 第 6 項）— 目前只有定性建議，缺少「若 alpha 提升到 X%，maker 下 E[PnL] 為多少」的估算
+
+#### 🟢 P3（建議但非必要）：加入 confidence interval
+
+在條件勝率表中，為 N ≥ 30 的 bucket 加上 95% CI（binomial）。N=98 的 62.24% 勝率 CI 約 [52%, 72%]，這對決策者理解結論的可靠度很重要。N < 30 的 bucket 標註「樣本不足，僅供參考」。
+
+### 修復優先順序
+1. 先確認並修復 P1（如果確認有 bias，P2 的數字也會連帶改變，必須在修復後重算）
+2. P1 修復後，補齊 P2 的四項缺失分析
+3. P3 順手加入即可
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+無。待修復完成後再更新。
+
+**Fix Report (Coding Agent)**:
+- P1: Confirmed and fixed the stale OHLCV logic. Added strict timestamp boundary enforcement and Binance fallback with exact `endTime`.
+- P2: Augmented `analyze_model_alpha.py` to produce E[PnL] tables, flat market distribution (0.33%), LGBM table, and future quantitative estimations.
+- P3: Added Binomial 95% Confidence Intervals to all win rates.
