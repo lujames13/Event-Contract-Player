@@ -246,7 +246,7 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 ### 3.1 Polymarket 基礎設施
 - [x] 3.1.1 Gamma API client + CLOB read-only client
 - [x] 3.1.2 Market lifecycle tracker（偵測當前 5m market）
-- [ ] 3.1.3 Label 邏輯修改（>= 結算條件，平台參數化）
+- [x] 3.1.3 Label 邏輯修改（>= 結算條件，平台參數化）
 - [x] 3.1.4 SQLite schema migration（pm_markets, pm_orders）
 
 ### 3.2 模型訓練（多 timeframe 探索）
@@ -257,7 +257,7 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 
 ### 3.3 模擬交易驗證
 - [x] 3.3.1 Paper trading pipeline（signal + 模擬 maker order）
-- [ ] 3.3.2 Discord Bot 適配（/predict 顯示 alpha，/stats 適配 PM PnL）
+- [x] 3.3.2 Discord Bot 適配（/predict 顯示 alpha，/stats 適配 PM PnL）
 - [ ] 3.3.3 累積 200+ 筆 → 統計顯著性驗證
 
 ---
