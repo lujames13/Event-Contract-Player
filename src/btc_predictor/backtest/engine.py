@@ -40,8 +40,15 @@ def _process_fold(
     # test_data_window excludes the fold_end (as predictions are for periods finishing AT or BEFORE fold_end)
     test_data_window = fold_data[(fold_data.index >= fold_start) & (fold_data.index < fold_end)]
     
-    # We simulate non-overlapping trades by stepping by timeframe_minutes.
-    test_timestamps = test_data_window.index[::timeframe_minutes]
+    # Detect interval from first two rows
+    if len(test_data_window) > 1:
+        interval_min = int((test_data_window.index[1] - test_data_window.index[0]).total_seconds() / 60)
+        step = max(1, timeframe_minutes // interval_min)
+    else:
+        step = 1
+        
+    # We simulate non-overlapping trades by stepping by appropriate number of rows.
+    test_timestamps = test_data_window.index[::step]
     
     fold_trades = []
     for ts in test_timestamps:

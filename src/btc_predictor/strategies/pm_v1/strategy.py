@@ -102,12 +102,20 @@ class PMV1Strategy(BaseStrategy):
             direction = "lower"
             confidence = 1.0 - prob_higher
             
+        # Calculate alpha (model_prob - market_price)
+        # In backtest, we use 0.5 as proxy market price for UP outcome
+        market_price_up = 0.5
+        alpha = prob_higher - market_price_up
+        
         return PredictionSignal(
             strategy_name=self.name,
             timestamp=ohlcv.index[-1],
-            timeframe_minutes=timeframe_minutes, # type: ignore
+            timeframe_minutes=timeframe_minutes,
             direction=direction,
             confidence=float(confidence),
             current_price=float(ohlcv['close'].iloc[-1]),
-            features_used={}
+            features_used=get_feature_columns(),
+            market_slug=f"btc-price-at-{ohlcv.index[-1].strftime('%Y%m%d%H%M')}-{timeframe_minutes}m",
+            market_price_up=market_price_up,
+            alpha=alpha
         )

@@ -40,7 +40,7 @@ class SimulatedTrade:
     strategy_name: str
     direction: Literal["higher", "lower"]
     confidence: float
-    timeframe_minutes: Literal[10, 30, 60, 1440]
+    timeframe_minutes: Literal[5, 10, 15, 30, 60, 240, 1440]
     bet_amount: float                                   # 5–20 USDT
     open_time: datetime                                 # UTC
     open_price: float                                   # 開倉瞬間 BTC index price

@@ -57,10 +57,12 @@ simulation:
 
 # [SUSPENDED]
 confidence_thresholds:                  # breakeven_winrate + 5% 安全邊際
-  10: 0.52    # 從 0.606 調整，依據 174 筆 live signal 校準分析（2026-02-20）
+  5: 0.5
+  15: 0.5
   30: 0.591
-  60: 0.591
-  1440: 0.591
+  60: 0.5
+  240: 0.5
+  1440: 0.5
 
 discord:
   users: "self_only"
