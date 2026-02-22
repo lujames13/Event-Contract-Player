@@ -63,6 +63,9 @@ class PolymarketTracker:
                 if not up_token_id or not down_token_id:
                     continue
 
+                up_token_price = tokens[0].get("price") if len(tokens) > 0 else None
+                m_price = up_token_price if up_token_price is not None else m.get("price", m.get("close_price"))
+
                 market_data = {
                     "slug": m.get("slug"),
                     "condition_id": m.get("conditionId"),
@@ -72,7 +75,7 @@ class PolymarketTracker:
                     "end_time": end_dt.isoformat(),
                     "price_to_beat": float(m.get("line")) if m.get("line") else None,
                     "outcome": m.get("outcome"),
-                    "close_price": float(m.get("close_price")) if m.get("close_price") else None
+                    "close_price": float(m_price) if m_price is not None else None
                 }
                 
                 self.store.save_pm_market(market_data)

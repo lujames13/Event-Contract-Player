@@ -129,8 +129,8 @@ async def test_order_type_literal_violation(store):
         orders = conn.execute("SELECT * FROM pm_orders").fetchall()
         assert len(orders) == 1
         order = dict(orders[0])
-        # The stored value IS "maker"
-        assert order["order_type"] == "maker"
+        # The stored value IS "GTC"
+        assert order["order_type"] == "GTC"
         
         # Test if we can re-construct the dataclass from DB
         # This will fail at runtime if we have strict type checking, but python won't stop it at constructor unless we use a library like pydantic.

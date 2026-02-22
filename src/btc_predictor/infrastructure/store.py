@@ -68,12 +68,27 @@ class DataStore:
                     actual_direction  TEXT,                 -- NULL = 未結算, 'higher' / 'lower' / 'draw'
                     close_price       FLOAT,
                     is_correct        BOOLEAN,             -- NULL = 未結算
+                    -- Polymarket 擴展欄位
+                    market_slug       TEXT,
+                    market_price_up   FLOAT,
+                    alpha             FLOAT,
+                    order_type        TEXT,
                     -- 與 Execution Layer 的關聯
                     traded            BOOLEAN NOT NULL DEFAULT 0,
                     trade_id          TEXT,                 -- FK to simulated_trades.id（如有）
                     created_at        TEXT NOT NULL DEFAULT (datetime('now'))
                 );
             """)
+
+            # Safe alter tables for backward compatibility
+            try:
+                conn.execute("ALTER TABLE prediction_signals ADD COLUMN market_slug TEXT;")
+                conn.execute("ALTER TABLE prediction_signals ADD COLUMN market_price_up FLOAT;")
+                conn.execute("ALTER TABLE prediction_signals ADD COLUMN alpha FLOAT;")
+                conn.execute("ALTER TABLE prediction_signals ADD COLUMN order_type TEXT;")
+            except sqlite3.OperationalError:
+                pass
+
             
             # Create indexing for faster retrieval if needed
             conn.execute("CREATE INDEX IF NOT EXISTS idx_ohlcv_time ON ohlcv (open_time);")
@@ -419,12 +434,18 @@ class DataStore:
         signal_id = str(uuid.uuid4())
         expiry_time = signal.timestamp + timedelta(minutes=signal.timeframe_minutes)
         
+        market_slug = getattr(signal, 'market_slug', None)
+        market_price_up = getattr(signal, 'market_price_up', None)
+        alpha = getattr(signal, 'alpha', None)
+        order_type = getattr(signal, 'order_type', None)
+
         with self._get_connection() as conn:
             conn.execute("""
                 INSERT INTO prediction_signals (
                     id, strategy_name, timestamp, timeframe_minutes, direction,
-                    confidence, current_price, expiry_time
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, current_price, expiry_time,
+                    market_slug, market_price_up, alpha, order_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 signal_id, 
                 signal.strategy_name,
@@ -433,7 +454,11 @@ class DataStore:
                 signal.direction,
                 signal.confidence,
                 signal.current_price,
-                expiry_time.isoformat() if isinstance(expiry_time, datetime) else expiry_time
+                expiry_time.isoformat() if isinstance(expiry_time, datetime) else expiry_time,
+                market_slug,
+                market_price_up,
+                alpha,
+                order_type
             ))
         return signal_id
 
@@ -631,3 +656,78 @@ class DataStore:
         
         with self._get_connection() as conn:
             conn.execute(query, params)
+
+    def save_polymarket_execution_context(self, signal: Any, trade: Any, order: Any) -> None:
+        """
+        Atomically save a prediction signal and (if applicable) its corresponding 
+        SimulatedTrade and PolymarketOrder within a single database transaction. 
+        """
+        import json
+        
+        timestamp_dt = signal.timestamp
+        if isinstance(timestamp_dt, pd.Timestamp):
+            timestamp_dt = timestamp_dt.to_pydatetime()
+            
+        expiry_time = timestamp_dt + timedelta(minutes=signal.timeframe_minutes)
+        
+        signal_id = str(uuid.uuid4())
+        market_slug = getattr(signal, 'market_slug', None)
+        market_price_up = getattr(signal, 'market_price_up', None)
+        alpha = getattr(signal, 'alpha', None)
+        order_type_signal = getattr(signal, 'order_type', None)
+
+        with self._get_connection() as conn:
+            # 1. Save Prediction Signal
+            conn.execute("""
+                INSERT INTO prediction_signals (
+                    id, strategy_name, timestamp, timeframe_minutes, direction,
+                    confidence, current_price, expiry_time, traded, trade_id,
+                    market_slug, market_price_up, alpha, order_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                signal_id, 
+                signal.strategy_name,
+                timestamp_dt.isoformat(),
+                signal.timeframe_minutes,
+                signal.direction,
+                signal.confidence,
+                signal.current_price,
+                expiry_time.isoformat(),
+                1 if trade else 0,
+                trade.id if trade else None,
+                market_slug,
+                market_price_up,
+                alpha,
+                order_type_signal
+            ))
+
+            if trade and order:
+                # 2. Save SimulatedTrade
+                order.signal_id = signal_id
+                
+                features_json = json.dumps(getattr(trade, 'features_used', {}))
+                op_time = trade.open_time.isoformat() if isinstance(trade.open_time, datetime) else trade.open_time
+                exp_time = trade.expiry_time.isoformat() if isinstance(trade.expiry_time, datetime) else trade.expiry_time
+                
+                conn.execute("""
+                    INSERT INTO simulated_trades (
+                        id, strategy_name, direction, confidence, timeframe_minutes,
+                        bet_amount, open_time, open_price, expiry_time, features_used
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    trade.id, trade.strategy_name, trade.direction, trade.confidence,
+                    trade.timeframe_minutes, trade.bet_amount, op_time, trade.open_price, exp_time, features_json
+                ))
+
+                # 3. Save PolymarketOrder
+                pl_time = order.placed_at.isoformat() if isinstance(order.placed_at, datetime) else order.placed_at
+                conn.execute("""
+                    INSERT INTO pm_orders (
+                        order_id, signal_id, token_id, side, price, size,
+                        order_type, status, placed_at, filled_at, fill_price, fill_size
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    order.order_id, order.signal_id, order.token_id, 
+                    order.side, order.price, order.size,
+                    order.order_type, order.status, pl_time, None, None, None
+                ))

@@ -170,71 +170,16 @@ class PolymarketLivePipeline:
                         side=side,
                         price=market_price if market_price else 0.5,
                         size=bet_amount / (market_price if market_price else 0.5),
-                        order_type="maker",
+                        order_type="GTC",
                         status="OPEN",
                         placed_at=timestamp_dt
                     )
 
                 # Execute transaction using DataStore connection
                 try:
-                    with self.store._get_connection() as conn:
-                        signal_id = str(uuid.uuid4())
-                        
-                        timestamp_dt = signal.timestamp
-                        if isinstance(timestamp_dt, pd.Timestamp):
-                            timestamp_dt = timestamp_dt.to_pydatetime()
-                            
-                        expiry_dt = timestamp_dt + timedelta(minutes=signal.timeframe_minutes)
-                        
-                        # 1. save_prediction_signal
-                        conn.execute("""
-                            INSERT INTO prediction_signals (
-                                id, strategy_name, timestamp, timeframe_minutes, direction,
-                                confidence, current_price, expiry_time, traded, trade_id,
-                                actual_direction, close_price, is_correct
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            signal_id, 
-                            signal.strategy_name,
-                            timestamp_dt.isoformat(),
-                            signal.timeframe_minutes,
-                            signal.direction,
-                            signal.confidence,
-                            signal.current_price,
-                            expiry_dt.isoformat(),
-                            1 if trade_id else 0,
-                            trade_id,
-                            None, None, None
-                        ))
-
-                        if should_bet and trade and order:
-                            order.signal_id = signal_id
-                            
-                            features_json = json.dumps(getattr(trade, 'features_used', {}))
-                            op_time = trade.open_time.isoformat() if isinstance(trade.open_time, datetime) else trade.open_time
-                            exp_time = trade.expiry_time.isoformat() if isinstance(trade.expiry_time, datetime) else trade.expiry_time
-                            conn.execute("""
-                                INSERT INTO simulated_trades (
-                                    id, strategy_name, direction, confidence, timeframe_minutes,
-                                    bet_amount, open_time, open_price, expiry_time, features_used
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                trade.id, trade.strategy_name, trade.direction, trade.confidence,
-                                trade.timeframe_minutes, trade.bet_amount, op_time, trade.open_price, exp_time, features_json
-                            ))
-
-                            pl_time = order.placed_at.isoformat() if isinstance(order.placed_at, datetime) else order.placed_at
-                            conn.execute("""
-                                INSERT INTO pm_orders (
-                                    order_id, signal_id, token_id, side, price, size,
-                                    order_type, status, placed_at, filled_at, fill_price, fill_size
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (
-                                order.order_id, order.signal_id, order.token_id, 
-                                order.side, order.price, order.size,
-                                order.order_type, order.status, pl_time, None, None, None
-                            ))
-                            logger.info(f"PolymarketLivePipeline: Placed SimulatedTrade {trade.id} and PolymarketOrder {order.order_id} for {strategy.name} ({timeframe}m)")
+                    self.store.save_polymarket_execution_context(signal, trade, order)
+                    if should_bet and trade and order:
+                        logger.info(f"PolymarketLivePipeline: Placed SimulatedTrade {trade.id} and PolymarketOrder {order.order_id} for {strategy.name} ({timeframe}m)")
 
                 except Exception as e:
                     logger.error(f"PolymarketLivePipeline: DB Transaction error: {e}", exc_info=True)

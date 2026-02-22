@@ -109,7 +109,7 @@ async def test_polymarket_pipeline_execution(temp_store):
         assert len(orders) == 1, "Expected exactly 1 Polymarket order to be saved"
         order = dict(orders[0])
         assert order["status"] == "OPEN"
-        assert order["order_type"] == "maker"
+        assert order["order_type"] == "GTC"
         assert order["price"] == 0.4
         
 @pytest.mark.asyncio
