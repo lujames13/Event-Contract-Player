@@ -1,6 +1,6 @@
 # Task Spec G3.4 — Polymarket Lifecycle Tracker 與 Schema Migration (3.1.2, 3.1.4)
 
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-02-22 -->
 <!-- architect: Antigravity -->
 
@@ -125,16 +125,34 @@
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+### 審核結果：[PASS]
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+1. ✅ 執行 `uv run pytest tests/infrastructure/test_store_polymarket.py tests/polymarket/test_tracker.py -v` 全部通過。
+2. ✅ 執行 `uv run pytest tests/` 確認核心邏輯無破壞（忽略慢速或掛起的 VPS verify 相關測試）。
+3. ✅ `DataStore` 成功建立 `pm_markets` 與 `pm_orders` 資料表，並驗證 UPSERT (COALESCE 處理 outcome) 正確。
+4. ✅ `PolymarketTracker.sync_active_markets()` 能正確從 Gamma 抓取、解析、過濾並持久化市場訊息。
+5. ✅ `docs/PROGRESS.md` 已同步更新進度。
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+✅ `git diff --name-only` 結果與 spec 完全符合：
+- `docs/PROGRESS.md`
+- `src/btc_predictor/infrastructure/store.py`
+- `src/btc_predictor/polymarket/tracker.py`
+- `tests/infrastructure/test_store_polymarket.py`
+- `tests/polymarket/test_tracker.py`
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+- **NOTE (Non-blocking)**: `store.py` (L571) 與部分測試中存在 `datetime.utcnow()`，導致 Python 3.12 出現 `DeprecationWarning`。雖不影響功能，但建議後續對齊 `code-style-guide.md` 使用 `datetime.now(timezone.utc)`。
+- **NOTE (Non-blocking)**: `PolymarketTracker.get_active_market` 返回 `dict`。考量到 `pm_markets` 表欄位較多且變動性高，目前使用 dict 是合理的，若未來需要更高的型別安全性可考慮補上 `PolymarketMarket` dataclass。
+
+### 擴展測試摘要
+已建立 `tests/review/specg3.4/test_tracker_expansion.py` 並測試通過：
+- `test_get_active_market_selection`: 驗證 `get_active_pm_market` 能在多個市場中挑選出最接近到期的那個。
+- `test_tracker_timeframe_slack`: 驗證 Tracker 對於 +/- 5 秒內的 timeframe 偏差具備容錯能力（slack）。
+- `test_upsert_preserves_outcome`: 驗證 UPSERT 邏輯在更新 meta 時不會誤將已結算的 outcome 覆蓋為 NULL。
+- `test_update_order_multiple_fields`: 驗證 `update_pm_order` 支援多欄位同步更新。
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+- 無。Coding agent 已正確標記 3.1 與 3.2 相關進度。下一階段建議集中於 3.3 Paper Trading Pipeline。
+
