@@ -162,3 +162,50 @@ async def test_predict_command_error_isolation():
     assert len(embed.fields) == 2
     assert "❌ 推理失敗: Model failed" in embed.fields[0].value
     assert "方向: **HIGHER**" in embed.fields[1].value
+
+@pytest.mark.asyncio
+async def test_predict_command_pm_formatting():
+    bot = MagicMock()
+    bot.store = MagicMock()
+    bot.pipeline = MagicMock()
+    
+    df = pd.DataFrame(
+        {"close": [50000] * 10},
+        index=pd.date_range("2026-02-17 14:00", periods=10, freq="1min")
+    )
+    bot.store.get_latest_ohlcv.return_value = df
+    
+    s1 = MagicMock()
+    s1.name = "pm_v1"
+    s1.available_timeframes = [5]
+    s1.predict.return_value = PredictionSignal(
+        strategy_name="pm_v1",
+        timestamp=df.index[-1],
+        timeframe_minutes=5,
+        direction="higher",
+        confidence=0.8,
+        current_price=50000.0,
+        market_slug="slug1",
+        market_price_up=0.5,
+        alpha=0.3,
+        order_type="GTC"
+    )
+    
+    bot.pipeline.strategies = [s1]
+    
+    cog = EventContractCog(bot)
+    interaction = AsyncMock()
+    interaction.response.defer = AsyncMock()
+    interaction.followup.send = AsyncMock()
+    
+    await cog.predict.callback(cog, interaction)
+    
+    args, kwargs = interaction.followup.send.call_args
+    embed = kwargs.get('embed') or args[0]
+    
+    assert len(embed.fields) == 1
+    assert "pm_v1" in embed.fields[0].name
+    value = embed.fields[0].value
+    assert "Alpha: **0.30000**" in value
+    assert "PM Price: **0.5000**" in value
+    assert "Order: **GTC**" in value

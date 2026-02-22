@@ -83,16 +83,28 @@ class EventContractCog(commands.Cog):
                     await interaction.followup.send(f"❌ 找不到策略: {model}", ephemeral=True)
                     return
                 
-                detail = await asyncio.to_thread(self.bot.store.get_strategy_detail, model, tf_value)
-                date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                daily_stats = await asyncio.to_thread(self.bot.store.get_daily_stats, model, date_str)
-                
-                # Query today's PnL separately since get_daily_stats only gives loss
-                with self.bot.store._get_connection() as conn:
-                    daily_pnl = conn.execute(
-                        "SELECT COALESCE(SUM(pnl), 0) FROM simulated_trades WHERE strategy_name = ? AND open_time LIKE ? AND result IS NOT NULL",
-                        (model, f"{date_str}%")
-                    ).fetchone()[0]
+                is_pm = model.startswith("pm_")
+                if is_pm:
+                    detail = await asyncio.to_thread(self.bot.store.get_pm_strategy_detail, model, tf_value)
+                    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    daily_stats = await asyncio.to_thread(self.bot.store.get_pm_daily_stats, model, date_str)
+                    
+                    with self.bot.store._get_connection() as conn:
+                        daily_pnl = conn.execute(
+                            "SELECT COALESCE(SUM(o.pnl), 0) FROM pm_orders o JOIN prediction_signals s ON o.signal_id = s.id WHERE s.strategy_name = ? AND o.placed_at LIKE ? AND o.pnl IS NOT NULL",
+                            (model, f"{date_str}%")
+                        ).fetchone()[0]
+                else:
+                    detail = await asyncio.to_thread(self.bot.store.get_strategy_detail, model, tf_value)
+                    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    daily_stats = await asyncio.to_thread(self.bot.store.get_daily_stats, model, date_str)
+                    
+                    # Query today's PnL separately since get_daily_stats only gives loss
+                    with self.bot.store._get_connection() as conn:
+                        daily_pnl = conn.execute(
+                            "SELECT COALESCE(SUM(pnl), 0) FROM simulated_trades WHERE strategy_name = ? AND open_time LIKE ? AND result IS NOT NULL",
+                            (model, f"{date_str}%")
+                        ).fetchone()[0]
                 
                 title = f"📊 {model} 詳細統計"
                 if tf_value:
@@ -138,9 +150,14 @@ class EventContractCog(commands.Cog):
                 pairs_to_show.sort(key=lambda x: (x[0], x[1]))
 
                 for name, tf in pairs_to_show:
-                    s = await asyncio.to_thread(self.bot.store.get_strategy_detail, name, tf)
+                    is_pm = name.startswith("pm_")
+                    if is_pm:
+                        s = await asyncio.to_thread(self.bot.store.get_pm_strategy_detail, name, tf)
+                    else:
+                        s = await asyncio.to_thread(self.bot.store.get_strategy_detail, name, tf)
                     if s['settled'] == 0 and s['pending'] == 0:
                         continue
+                        
                     
                     tf_str = f"{tf}m"
                     row = f"{name:<14} | {tf_str:>3} | {s['settled']+s['pending']:>4} | {s['da']:>5.1%} | {s['total_pnl']:+.2f}\n"
@@ -372,7 +389,11 @@ class EventContractCog(commands.Cog):
             return
 
         for strategy in pipeline.strategies:
-            summary = await asyncio.to_thread(store.get_strategy_summary, strategy.name)
+            is_pm = strategy.name.startswith("pm_")
+            if is_pm:
+                summary = await asyncio.to_thread(store.get_pm_strategy_summary, strategy.name)
+            else:
+                summary = await asyncio.to_thread(store.get_strategy_summary, strategy.name)
             
             timeframes_str = ", ".join([f"{tf}m" for tf in strategy.available_timeframes])
             
@@ -452,13 +473,21 @@ class EventContractCog(commands.Cog):
                         bet_str = f"✅ {bet_amount:.1f} USDT（超過閾值 {threshold}）"
                     else:
                         bet_str = f"❌ 不下注（低於閾值 {threshold}）"
-                    
+                    pm_info = ""
+                    if getattr(signal, 'market_slug', None) or getattr(signal, 'alpha', None) is not None:
+                        alpha_val = f"{signal.alpha:.5f}" if getattr(signal, 'alpha', None) is not None else "N/A"
+                        pm_price = f"{getattr(signal, 'market_price_up', 0.0):.4f}" if getattr(signal, 'market_price_up', None) is not None else "N/A"
+                        pm_info = f"\nAlpha: **{alpha_val}** | PM Price: **{pm_price}**"
+                        if getattr(signal, 'order_type', None):
+                            pm_info += f" | Order: **{signal.order_type}**"
+
                     results.append({
                         "strategy": strategy.name,
                         "tf": tf,
                         "direction": signal.direction.upper(),
                         "confidence": signal.confidence,
                         "bet": bet_str,
+                        "pm_info": pm_info,
                         "error": None
                     })
                 except Exception as e:
@@ -485,9 +514,10 @@ class EventContractCog(commands.Cog):
                 field_val = f"❌ 推理失敗: {res['error']}"
             else:
                 field_name = f"📈 {res['strategy']} | {res['tf']}m"
+                pm_str = res.get('pm_info', '')
                 field_val = (
                     f"方向: **{res['direction']}** | 信心度: **{res['confidence']:.4f}**\n"
-                    f"下注建議: {res['bet']}"
+                    f"下注建議: {res['bet']}{pm_str}"
                 )
             embed.add_field(name=field_name, value=field_val, inline=False)
             
@@ -602,6 +632,26 @@ class EventContractBot(commands.Bot):
             f"⏰ 到期:      {trade.expiry_time} UTC\n"
             f"🎯 閾值:      {threshold}（{'已超過' if is_above else '未達'}）"
         )
+        
+        if getattr(self, 'store', None):
+            def fetch_pm_info():
+                with self.store._get_connection() as conn:
+                    return conn.execute(
+                        "SELECT alpha, market_slug, market_price_up, order_type FROM prediction_signals WHERE trade_id = ?", 
+                        (trade.id,)
+                    ).fetchone()
+            try:
+                row = await asyncio.to_thread(fetch_pm_info)
+                if row and (row[0] is not None or row[1] is not None):
+                    alpha, market_slug, market_price_up, order_type = row
+                    alpha_str = f"{alpha:.5f}" if alpha is not None else "N/A"
+                    pm_price = f"{market_price_up:.4f}" if market_price_up is not None else "N/A"
+                    desc += f"\n\n**Polymarket 參數**:\nAlpha: {alpha_str} | PM Price: {pm_price}"
+                    if order_type:
+                        desc += f" | Order: {order_type}"
+            except Exception as e:
+                logger.error(f"Error fetching PM info for trade {trade.id}: {e}")
+
         embed.description = desc
         
         await self.target_channel.send(embed=embed)

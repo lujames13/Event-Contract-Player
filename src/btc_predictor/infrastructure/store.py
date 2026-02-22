@@ -407,6 +407,151 @@ class DataStore:
                 "consecutive_losses": consecutive_losses
             }
 
+    def get_pm_strategy_summary(self, strategy_name: str) -> dict:
+        """回傳指定 Polymarket 策略的累計統計摘要。"""
+        with self._get_connection() as conn:
+            row = conn.execute("""
+                SELECT 
+                    COUNT(*) as total_trades,
+                    COALESCE(SUM(CASE WHEN o.pnl > 0 THEN 1 ELSE 0 END), 0) as wins,
+                    COALESCE(SUM(CASE WHEN o.pnl IS NOT NULL THEN 1 ELSE 0 END), 0) as settled,
+                    COALESCE(SUM(o.pnl), 0) as total_pnl
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                WHERE s.strategy_name = ?
+            """, (strategy_name,)).fetchone()
+        
+        total, wins, settled, pnl = row
+        da = wins / settled if settled > 0 else 0.0
+        return {
+            "total_trades": total,
+            "settled_trades": settled,
+            "wins": wins,
+            "da": da,
+            "total_pnl": pnl
+        }
+
+    def get_pm_strategy_detail(self, strategy_name: str, timeframe: int = None) -> dict:
+        """回傳指定 Polymarket 策略的詳細統計。"""
+        base_where = "WHERE s.strategy_name = ? AND o.pnl IS NOT NULL"
+        params = [strategy_name]
+        if timeframe:
+            base_where += " AND s.timeframe_minutes = ?"
+            params.append(timeframe)
+
+        with self._get_connection() as conn:
+            row = conn.execute(f"""
+                SELECT COUNT(*) as settled,
+                    COALESCE(SUM(CASE WHEN o.pnl > 0 THEN 1 ELSE 0 END), 0) as wins,
+                    COALESCE(SUM(o.pnl), 0) as total_pnl
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                {base_where}
+            """, params).fetchone()
+
+            higher = conn.execute(f"""
+                SELECT COUNT(*),
+                    COALESCE(SUM(CASE WHEN o.pnl > 0 THEN 1 ELSE 0 END), 0)
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                {base_where} AND s.direction = 'higher'
+            """, params).fetchone()
+
+            lower = conn.execute(f"""
+                SELECT COUNT(*),
+                    COALESCE(SUM(CASE WHEN o.pnl > 0 THEN 1 ELSE 0 END), 0)
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                {base_where} AND s.direction = 'lower'
+            """, params).fetchone()
+
+            pending_where = "WHERE s.strategy_name = ? AND o.pnl IS NULL"
+            pending_params = [strategy_name]
+            if timeframe:
+                pending_where += " AND s.timeframe_minutes = ?"
+                pending_params.append(timeframe)
+            pending = conn.execute(f"""
+                SELECT COUNT(*) 
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                {pending_where}
+            """, pending_params).fetchone()[0]
+
+            pnl_rows = conn.execute(f"""
+                SELECT o.pnl 
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                {base_where}
+                ORDER BY o.placed_at ASC
+            """, params).fetchall()
+
+        settled, wins, total_pnl = row
+        da = wins / settled if settled > 0 else 0.0
+        h_total, h_wins = higher
+        l_total, l_wins = lower
+        higher_da = h_wins / h_total if h_total > 0 else 0.0
+        lower_da = l_wins / l_total if l_total > 0 else 0.0
+
+        cumulative = peak = max_dd = 0.0
+        for (p,) in pnl_rows:
+            cumulative += p
+            if cumulative > peak:
+                peak = cumulative
+            dd = peak - cumulative
+            if dd > max_dd:
+                max_dd = dd
+
+        return {
+            "settled": settled, "pending": pending,
+            "wins": wins, "da": da,
+            "higher_total": h_total, "higher_wins": h_wins,
+            "higher_da": higher_da,
+            "lower_total": l_total, "lower_wins": l_wins,
+            "lower_da": lower_da,
+            "total_pnl": total_pnl, "max_drawdown": max_dd,
+        }
+
+    def get_pm_daily_stats(self, strategy_name: str, date_str: str) -> dict:
+        """Get daily statistics for Polymarket risk control."""
+        query = """
+            SELECT 
+                SUM(CASE WHEN o.pnl < 0 THEN -o.pnl ELSE 0 END) as daily_loss,
+                COUNT(*) as daily_trades
+            FROM pm_orders o
+            JOIN prediction_signals s ON o.signal_id = s.id
+            WHERE s.strategy_name = ? AND o.placed_at LIKE ?
+        """
+        
+        with self._get_connection() as conn:
+            row = conn.execute(query, (strategy_name, f"{date_str}%")).fetchone()
+            
+            # For consecutive losses, we need the recent trades
+            trades_query = """
+                SELECT o.pnl 
+                FROM pm_orders o
+                JOIN prediction_signals s ON o.signal_id = s.id
+                WHERE s.strategy_name = ? AND o.pnl IS NOT NULL
+                ORDER BY o.placed_at DESC
+                LIMIT 20
+            """
+            recent_results = conn.execute(trades_query, (strategy_name,)).fetchall()
+            
+            consecutive_losses = 0
+            for (pnl,) in recent_results:
+                if pnl < 0:
+                    consecutive_losses += 1
+                elif pnl > 0:
+                    break
+                else:
+                    continue
+            
+            return {
+                "daily_loss": row[0] if row[0] else 0.0,
+                "daily_trades": row[1] if row[1] else 0,
+                "consecutive_losses": consecutive_losses
+            }
+
+
     def get_pending_trades(self) -> pd.DataFrame:
         """Retrieve trades that need settlement (close_price IS NULL)."""
         with self._get_connection() as conn:

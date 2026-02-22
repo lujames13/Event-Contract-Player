@@ -17,7 +17,7 @@ class PredictionSignal:
     market_slug: str | None = None
     market_price_up: float | None = None
     alpha: float | None = None
-    order_type: Literal["maker", "taker"] | None = None
+    order_type: Literal["GTC", "FOK", "GTD"] | None = None
 
 @dataclass
 class PolymarketOrder:
