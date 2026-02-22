@@ -122,7 +122,27 @@
 ## Review Agent 回報區
 
 ### 審核結果
-- [PASS / FAIL / BLOCKED]
+- **FAIL**
 
-### 問題與建議
-- [檢討與建議...]
+### 基本驗收結果
+- **修改範圍**：PASS (僅修改了 spec 要求的檔案)
+- **介面契約**：FAIL (`PolymarketOrder.order_type` 與 `models.py`/`ARCHITECTURE.md` 不一致)
+- **既有測試**：PASS (`tests/polymarket/test_pipeline.py` 通過)
+
+### 擴展測試摘要
+- **test_transaction_rollback_on_failure**: 驗證多表寫入的原子性。結果：PASS (事務正常回滾)。
+- **test_order_type_literal_violation**: 檢查 `order_type` 儲存內容。結果：NOTE (`"maker"` 已存入，但與契約 `Literal["GTC", "FOK", "GTD"]` 衝突)。
+- **test_trigger_logic_for_all_timeframes**: 檢查時間觸發邏輯。結果：PASS。
+- **test_alpha_calculation_direction_lower**: 檢查 `lower` 方向的 Alpha 計算。結果：PASS。
+- **test_risk_control_daily_loss_limit**: 檢查風控攔截。結果：PASS。
+
+### 發現的問題
+1. **介面契約違規 (Blocking)**: `models.py` 與 `ARCHITECTURE.md` 定義的 `PolymarketOrder.order_type` 為 `Literal["GTC", "FOK", "GTD"]`。但 `pipeline.py` 實作時傳入了 `"maker"`。這會導致型別檢查失敗且與系統定義衝突。
+2. **架構規範違規 (Blocking)**: Spec 要求的「Pipeline 必須調用 `store.save_prediction_signal`」，但 Coding Agent 在 `pipeline.py` 中使用了原始 SQL 進行 `conn.execute`。雖然是為了事務原子性，但這種繞過 DataStore 封裝的作法造成了程式碼重複且破壞了 Signal Layer 的介面一致性。建議應擴展 `DataStore` 以支援事務寫入，而非在 Pipeline 層級撰寫 SQL。
+3. **數據完整性缺失 (Blocking)**: `PredictionSignal` dataclass 雖然新增了 `alpha`, `market_slug`, `market_price_up` 欄位，但 `prediction_signals` 表格並未對應新增欄位。這導致 Signal Layer 無法「全量紀錄」Polymarket 相關的核心決策數據。
+4. **Tracker 價格欄位疑慮 (NOTE)**: `tracker.py` 中從 Gamma 取得價格時使用的是 `m.get("close_price")`。對於活躍市場 (Active Markets)，Gamma 通常不返回這個欄位，而是 `lastTradePrice` 或 `price`。這可能導致 Pipeline 始終抓不到 Alpha 從而無法下單。
+
+### 建議
+- 在 `DataStore` 中實作一個 `save_polymarket_execution_context(signal, trade, order)` 之類的方法，封裝事務邏輯，確保 Pipeline 層級不直接操作 SQL。
+- 更新 `pm_orders` 表格 schema 或 `models.py` 中的 Literal，統一口徑（是記錄 Maker/Taker 策略，還是 GTC/FOK 指令）。
+- 補齊 `prediction_signals` 表格中缺失的 Polymarket 擴展欄位。
