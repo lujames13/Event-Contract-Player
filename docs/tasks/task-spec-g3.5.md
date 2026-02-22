@@ -1,6 +1,6 @@
 # Task Spec G3.5 — Polymarket Paper Trading Pipeline (3.3.1)
 
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-02-22 -->
 <!-- architect: Antigravity -->
 
@@ -85,7 +85,7 @@
 
 ---
 
-## 驗收標準
+## 驗證標準
 
 1. 執行 `uv run pytest tests/polymarket/test_pipeline.py -v` 需全部通過。
 2. 確認 `scripts/run_live.py` 腳本存在並能被無錯執行啟動。
@@ -129,4 +129,21 @@
 ## Review Agent 回報區
 
 ### 審核結果
-- **FAIL** （等待本次修正後重新 Review）
+- **PASS**
+
+### 基本驗收結果
+- **修改範圍**: ✅ 通過 (新增 pipeline.py, run_live.py, test_pipeline.py; 修改 store.py, models.py, PROGRESS.md, constants.yaml)
+- **介面契約**: ✅ 通過 (`PolymarketOrder.order_type` 已修正為 `"GTC"`)
+- **既有測試**: ✅ 通過 (`uv run pytest tests/polymarket/test_pipeline.py`)
+
+### 擴展測試摘要
+- **Transaction Rollback**: ✅ 通過。驗證 `save_polymarket_execution_context` 在原子寫入失敗時能正確回滾所有表格。
+- **Literal Validation**: ✅ 通過。確認儲存的 `order_type` 符合 `models.py` 的契約。
+- **Alpha Direction**: ✅ 通過。驗證 `lower` 方向的 alpha 計算邏輯 `alpha = confidence - (1 - market_price_up)` 正確。
+- **Risk Control**: ✅ 通過。確認每日虧損觸及上限時停止模擬下單。
+
+### 發現的問題
+- 無
+
+### 建議
+- **NOTE**: `PredictionSignal.order_type` 目前仍保留為 `Literal["maker", "taker"]`，雖然 Pipeline 目前沒用到這個欄位（預設為 None），但未來若需在 Signal 層記錄建議的 order type，建議統一將 `Literal` 定義與 `PolymarketOrder` 保持一致。
