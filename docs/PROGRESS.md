@@ -256,7 +256,7 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 - [x] 3.2.4 Alpha 分析 × 每個 timeframe（model vs market price，找出最佳 timeframe-model 組合）
 
 ### 3.3 模擬交易驗證
-- [ ] 3.3.1 Paper trading pipeline（signal + 模擬 maker order）
+- [x] 3.3.1 Paper trading pipeline（signal + 模擬 maker order）
 - [ ] 3.3.2 Discord Bot 適配（/predict 顯示 alpha，/stats 適配 PM PnL）
 - [ ] 3.3.3 累積 200+ 筆 → 統計顯著性驗證
 

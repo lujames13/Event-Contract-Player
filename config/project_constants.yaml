@@ -25,7 +25,12 @@ polymarket:
   vps_region: "asia-northeast1"
 
 alpha_thresholds:                       # 每個策略 × timeframe 獨立校準
-  pm_v1: null                           # 待模型訓練後填入
+  pm_v1:
+    5: 0.02
+    15: 0.02
+    60: 0.02
+    240: 0.02
+    1440: 0.02
 
 # === [SUSPENDED] Binance EC 區塊 ===
 event_contract:
