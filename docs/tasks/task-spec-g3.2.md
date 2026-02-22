@@ -1,6 +1,6 @@
 # Task Spec G3.2 — Polymarket 多 Timeframe 模型訓練與回測
 
-<!-- status: review -->
+<!-- status: blocked -->
 <!-- created: 2026-02-22 -->
 <!-- architect: Antigravity -->
 
@@ -112,13 +112,27 @@ Polymarket 的結算條件 (`>=`) 以及 Maker 零手續費機制，大幅改變
 
 ## Review Agent 回報區
 
-### 審核結果：[待填寫]
+### 審核結果：FAIL / BLOCKED
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+- ✅ 1. 執行 `uv run pytest -v`，所有既有的測試通過 (89 tests passed)。
+- ❌ 2. 成功執行 5m 訓練與回測：雖然指令成功運行，但 `pm_v1` 實作違反了介面契約。
+- ✅ 3. 回測報告產出：`PM-V1-WalkForward-Report.md` 已產出。
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+- ✅ 檔案修改範圍符合 spec 列表。
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+1. **介面契約違反 (Contract Violation)**: `PredictionSignal.features_used` 應為 `list[str]`，但 `pm_v1/strategy.py` 實作中賦值為 `dict ({})`。這會導致依賴此欄位的後續處理邏輯崩潰。
+2. **Alpha 計算與 Polymarket 欄位缺失**: `pm_v1` 僅作為純方向模型，未實作 `alpha` (model vs market price) 計算，且產出的 `PredictionSignal` 未填寫 `market_slug`, `market_price_up`, `alpha` 等核心 Polymarket 欄位。這與 `ARCHITECTURE.md` 的契約及 `polymarket-migration-plan.md` 的 Alpha 優勢核心理念不符。
+3. **Timeframe 遺漏**: 遷徙計畫 Phase 3 要求 5m, 15m, 1h, 4h, 1d，但本 Task Spec 僅實作前三者，遺漏了 4h 與 1d 且未說明原因。
+4. **前置基礎設施缺失 (G3.1 Gap)**: Spec 聲稱 G3.1 (Part 1 Pipeline 解耦合) 是前置條件，但經查 `src/btc_predictor/polymarket/` 目錄除了 `__init__.py` 外幾乎是空的。這導致 `pm_v1` 模型無法獲取 Polymarket 市場價格資訊來計算 Alpha。
+5. **型別定義不一致**: `models.py` 中的 `SimulatedTrade.timeframe_minutes` Literal 未包含 Polymarket 使用的 `5` 與 `15`。
+6. **測試覆蓋缺口**: 未針對 `pm_v1` 新策略建立對應的 unit test。
+
+### 建議
+- **BLOCKING**: 修正 `features_used` 型別錯誤。
+- **BLOCKING**: 補齊或說明為何跳過 4h, 1d timeframe。
+- **BLOCKING**: 確認 G3.1 基礎設施（Gamma/CLOB clients）是否確實完成，模型需能輸出 `alpha` 指標。
+- **NOTE**: 建議在 `tests/test_strategies/` 下新增 `test_pm_v1.py`。
+- **NOTE**: 更新 `models.py` 的 Literal 定義以支持 5m, 15m。
