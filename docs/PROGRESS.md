@@ -244,16 +244,16 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 - [x] 3.0.2 目錄結構重組（Binance 收攏、Polymarket 新目錄）
 
 ### 3.1 Polymarket 基礎設施
-- [ ] 3.1.1 Gamma API client + CLOB read-only client
-- [ ] 3.1.2 Market lifecycle tracker（偵測當前 5m market）
+- [x] 3.1.1 Gamma API client + CLOB read-only client
+- [x] 3.1.2 Market lifecycle tracker（偵測當前 5m market）
 - [ ] 3.1.3 Label 邏輯修改（>= 結算條件，平台參數化）
-- [ ] 3.1.4 SQLite schema migration（pm_markets, pm_orders）
+- [x] 3.1.4 SQLite schema migration（pm_markets, pm_orders）
 
 ### 3.2 模型訓練（多 timeframe 探索）
-- [ ] 3.2.1 Feature engineering（reuse Binance 1m OHLCV + PM market features，timeframe-agnostic）
-- [ ] 3.2.2 pm_v1 訓練（CatBoost 基礎，>= 結算，5m/15m/1h/4h/1d 全跑）
-- [ ] 3.2.3 Walk-forward 回測 × 每個 timeframe（PM 結算條件 + fee 模型）
-- [ ] 3.2.4 Alpha 分析 × 每個 timeframe（model vs market price，找出最佳 timeframe-model 組合）
+- [x] 3.2.1 Feature engineering（reuse Binance 1m OHLCV + PM market features，timeframe-agnostic）
+- [x] 3.2.2 pm_v1 訓練（CatBoost 基礎，>= 結算，5m/15m/1h/4h/1d 全跑）
+- [x] 3.2.3 Walk-forward 回測 × 每個 timeframe（PM 結算條件 + fee 模型）
+- [x] 3.2.4 Alpha 分析 × 每個 timeframe（model vs market price，找出最佳 timeframe-model 組合）
 
 ### 3.3 模擬交易驗證
 - [ ] 3.3.1 Paper trading pipeline（signal + 模擬 maker order）

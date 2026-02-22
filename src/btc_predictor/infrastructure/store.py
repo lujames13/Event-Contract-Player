@@ -79,6 +79,42 @@ class DataStore:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_ohlcv_time ON ohlcv (open_time);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_unsettled ON prediction_signals(expiry_time) WHERE actual_direction IS NULL;")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_strategy ON prediction_signals(strategy_name, timeframe_minutes);")
+
+            # Polymarket Markets
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pm_markets (
+                    slug            TEXT PRIMARY KEY,
+                    condition_id    TEXT NOT NULL,
+                    up_token_id     TEXT NOT NULL,
+                    down_token_id   TEXT NOT NULL,
+                    start_time      TEXT NOT NULL,
+                    end_time        TEXT NOT NULL,
+                    price_to_beat   REAL,
+                    outcome         TEXT,
+                    close_price     REAL,
+                    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+            """)
+
+            # Polymarket Orders
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pm_orders (
+                    order_id        TEXT PRIMARY KEY,
+                    signal_id       TEXT REFERENCES prediction_signals(id),
+                    token_id        TEXT NOT NULL,
+                    side            TEXT NOT NULL,
+                    price           REAL NOT NULL,
+                    size            REAL NOT NULL,
+                    order_type      TEXT NOT NULL,
+                    status          TEXT NOT NULL,
+                    placed_at       TEXT NOT NULL,
+                    filled_at       TEXT,
+                    fill_price      REAL,
+                    fill_size       REAL,
+                    pnl             REAL,
+                    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+            """)
             conn.commit()
 
     def save_ohlcv(self, df: pd.DataFrame, symbol: str, interval: str):
@@ -481,3 +517,117 @@ class DataStore:
             "correct": correct,
             "accuracy": accuracy
         }
+
+    # --- Polymarket Methods ---
+
+    def save_pm_market(self, market: dict | Any):
+        """
+        Save or update a Polymarket market configuration.
+        Supports both dict and potential future dataclass.
+        """
+        if hasattr(market, '__dataclass_fields__'):
+            # Convert dataclass to dict if needed, but for now assuming dict or simple attr access
+            m = {
+                "slug": market.slug,
+                "condition_id": market.condition_id,
+                "up_token_id": market.up_token_id,
+                "down_token_id": market.down_token_id,
+                "start_time": market.start_time,
+                "end_time": market.end_time,
+                "price_to_beat": market.price_to_beat,
+                "outcome": getattr(market, 'outcome', None),
+                "close_price": getattr(market, 'close_price', None)
+            }
+        else:
+            m = market
+
+        query = """
+            INSERT INTO pm_markets (
+                slug, condition_id, up_token_id, down_token_id, 
+                start_time, end_time, price_to_beat, outcome, close_price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(slug) DO UPDATE SET
+                condition_id = excluded.condition_id,
+                up_token_id = excluded.up_token_id,
+                down_token_id = excluded.down_token_id,
+                start_time = excluded.start_time,
+                end_time = excluded.end_time,
+                price_to_beat = excluded.price_to_beat,
+                outcome = COALESCE(excluded.outcome, outcome),
+                close_price = COALESCE(excluded.close_price, close_price)
+        """
+        with self._get_connection() as conn:
+            conn.execute(query, (
+                m["slug"], m["condition_id"], m["up_token_id"], m["down_token_id"],
+                m["start_time"], m["end_time"], m.get("price_to_beat"), 
+                m.get("outcome"), m.get("close_price")
+            ))
+
+    def get_active_pm_market(self, timeframe_minutes: int) -> Optional[dict]:
+        """
+        Get the most recent active market for a specific timeframe.
+        'Active' means end_time > now and outcome is NULL.
+        """
+        now_str = datetime.utcnow().isoformat()
+        
+        # Approximate timeframe matching via slug or price_to_beat isn't perfect, 
+        # normally we'd need a 'timeframe' column, but we can filter by end_time - start_time
+        # or just rely on the fact that tracker only syncs what we tell it.
+        # For now, let's use a simple query that looks for unclosed markets.
+        
+        query = """
+            SELECT * FROM pm_markets
+            WHERE end_time > ? AND outcome IS NULL
+            ORDER BY end_time ASC
+        """
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(query, (now_str,)).fetchall()
+            
+            # Filter by timeframe in python for simplicity if needed, 
+            # or just return the first one that fits the end_time alignment.
+            # BTC 5m markets usually end on multiples of 5m.
+            for row in rows:
+                m = dict(row)
+                start_dt = datetime.fromisoformat(m["start_time"].replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(m["end_time"].replace('Z', '+00:00'))
+                duration = (end_dt - start_dt).total_seconds() / 60
+                if abs(duration - timeframe_minutes) < 1: # Slack for 1 sec
+                    return m
+        return None
+
+    def save_pm_order(self, order: Any):
+        """Save a PolymarketOrder dataclass to the database."""
+        with self._get_connection() as conn:
+            conn.execute("""
+                INSERT INTO pm_orders (
+                    order_id, signal_id, token_id, side, price, size,
+                    order_type, status, placed_at, filled_at, fill_price, fill_size
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                order.order_id, order.signal_id, order.token_id, 
+                order.side, order.price, order.size,
+                order.order_type, order.status,
+                order.placed_at.isoformat() if isinstance(order.placed_at, datetime) else order.placed_at,
+                order.filled_at.isoformat() if isinstance(order.filled_at, datetime) else order.filled_at,
+                order.fill_price, order.fill_size
+            ))
+
+    def update_pm_order(self, order_id: str, status: str, **kwargs):
+        """Update an existing Polymarket order status and other fields."""
+        fields = ["status = ?"]
+        params = [status]
+        
+        for k, v in kwargs.items():
+            if k in ['filled_at', 'fill_price', 'fill_size', 'pnl']:
+                fields.append(f"{k} = ?")
+                if k == 'filled_at' and isinstance(v, datetime):
+                    params.append(v.isoformat())
+                else:
+                    params.append(v)
+        
+        params.append(order_id)
+        query = f"UPDATE pm_orders SET {', '.join(fields)} WHERE order_id = ?"
+        
+        with self._get_connection() as conn:
+            conn.execute(query, params)
