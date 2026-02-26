@@ -7,6 +7,9 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.btc_predictor.polymarket.trading_client import TradeCLOBClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -41,9 +44,24 @@ def main():
     # Since this is a live script, we assume the user provides a token_id.
     token_id = os.getenv("TEST_TOKEN_ID")
     if not token_id:
-        logger.warning("TEST_TOKEN_ID environment variable is not set. Skipping the order placement and cancellation test.")
-        logger.info("To fully test EIP-712 signing, please provide a valid token ID using 'export TEST_TOKEN_ID=\"your_token_id\"'.")
-        return
+        logger.info("TEST_TOKEN_ID not found, fetching an active market token from CLOB API...")
+        import requests
+        try:
+            resp = requests.get("https://clob.polymarket.com/sampling-markets")
+            data = resp.json().get("data", [])
+            for m in data:
+                if m.get("tokens"):
+                    token_id = str(m["tokens"][0]["token_id"])
+                    logger.info(f"Auto-selected token_id: {token_id} from market ID '{m.get('condition_id', '')}'")
+                    break
+            
+            if not token_id:
+                logger.error("No active markets found via CLOB API to grab a token_id.")
+                return
+        except Exception as e:
+            logger.error(f"Failed to auto-fetch a token ID: {e}")
+            logger.info("To fully test EIP-712 signing, please provide a valid token ID using 'export TEST_TOKEN_ID=\"your_token_id\"'.")
+            return
         
     price = 0.01  # Absurdly low price to ensure it does not fill
     size = 5.0    # 5 shares

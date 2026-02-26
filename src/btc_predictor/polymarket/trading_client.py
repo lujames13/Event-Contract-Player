@@ -49,6 +49,21 @@ class TradeCLOBClient:
         if api_key and api_secret and api_passphrase:
             creds = ApiCreds(api_key=api_key, api_secret=api_secret, api_passphrase=api_passphrase)
         
+        # Setup Webshare Proxy if available
+        p_addr = os.getenv("WEBSHARE_PROXY_ADDRESS")
+        p_port = os.getenv("WEBSHARE_PROXY_PORT")
+        p_user = os.getenv("WEBSHARE_PROXY_USERNAME")
+        p_pass = os.getenv("WEBSHARE_PROXY_PASSWORD")
+        
+        if p_addr and p_port and p_user and p_pass:
+            proxy_url = f"http://{p_user}:{p_pass}@{p_addr}:{p_port}"
+            os.environ["HTTP_PROXY"] = proxy_url
+            os.environ["HTTPS_PROXY"] = proxy_url
+            os.environ["http_proxy"] = proxy_url
+            os.environ["https_proxy"] = proxy_url
+            import logging
+            logging.getLogger(__name__).info(f"Configured HTTP proxy: {p_addr}:{p_port}")
+            
         # Note: Depending on the key type, we may need a private key to sign the L1 requests.
         # But `py_clob_client` usually creates credentials automatically when API Keys are provided.
         self.client = ClobClient(
@@ -56,8 +71,15 @@ class TradeCLOBClient:
             key=os.getenv(f"POLYMARKET_PRIVATE_KEY_{self.env}"), # Some versions use this
             chain_id=chain_id,
             creds=creds,
+            signature_type=2, # Essential for Proxy Wallets
             funder=funder_address
         )
+        
+        if not creds and os.getenv(f"POLYMARKET_PRIVATE_KEY_{self.env}"):
+            import logging
+            logging.getLogger(__name__).info("No API credentials provided, deriving API key from private key...")
+            creds = self.client.derive_api_key()
+            
         self.client.set_api_creds(creds)
 
     def create_and_post_order(self, token_id: str, price: float, size: float, side: str) -> Dict[str, Any]:
