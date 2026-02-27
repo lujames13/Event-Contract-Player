@@ -305,16 +305,23 @@ Commit hash: 9cbdae02a608c450b07fbadce4d181651d04616f
 
 ## Review Agent 回報區
 
-### 審核結果：[PASS / FAIL / PASS WITH NOTES]
+### 審核結果：FAIL
 
 ### 驗收標準檢查
-<!-- 逐條 ✅/❌ -->
+✅ 1. `uv run pytest tests/analytics/test_extractors.py -v` 全部通過
+✅ 2. `uv run pytest tests/analytics/test_metrics.py -v` 全部通過
+✅ 3. `PYTHONPATH=src uv run python scripts/polymarket/compute_metrics.py` 可正常執行
+✅ 4. `metrics.json` 頂層 schema 與要求一致
 
 ### 修改範圍檢查
-<!-- git diff --name-only 的結果是否在範圍內 -->
+✅ 修改範圍檢查通過，所有被更動的檔案皆符合 spec 的規範。
 
 ### 發現的問題
-<!-- 具體問題描述 -->
+- **(阻塞) 錯誤路徑防禦不足**：`compute_directional_accuracy` 對於不含 `is_correct` 欄位但有除數 `total` > 0 的 DataFrame 沒有做防呆處理（例如 `is_correct` column missing 時）。若嘗試存取不存在的欄位將拋出 `KeyError: 'is_correct'`。相反的，`compute_pnl_metrics` 開頭就優雅地處理了 `if ... or 'pnl' not in df.columns`，請在 `metrics.py` 的每個函數加上必要的必要欄位防呆。
+- **(阻塞) 設定檔未實際使用**：`compute_metrics.py` 腳本已經載入了 `breakeven_winrate` (從 `project_constants.yaml`)，但在後續的指標計算、判定邏輯或 meta JSON 輸出時，完全沒有利用該變數。此項未達 task spec 期望的「不硬編碼 breakeven winrate ... 讀取」，請將載入的常數實際運用在 JSON meta 報告呈現（或替換其他預設比較）。
+
+### 建議與值得注意的地方 (NOTES)
+- `compute_drift_detection` 中的 `is_degrading = slope < -0.005`。這裡的 slope 是依據每次位移步數 (index 遞增) 求得的斜率。因此如果 `slope < -0.005`，代表「**每平移一筆 trade**，DA 下降 0.5%」，這在現實中是非常劇烈的斷崖式惡化，這應該不符合 "per window" 的字面預期衰退率，這可能要重新檢視並更正 `slope` 的判定口徑。
 
 ### PROGRESS.md 修改建議
-<!-- 如有 -->
+目前請先修復上述阻塞性問題，待所有 tests 通過並重新發動 review-task 將 status 改為 done 即可。
