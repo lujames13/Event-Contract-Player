@@ -1,5 +1,5 @@
 # Task Spec G3.8 — Analytics 模組 1+2：Data Extraction + Metrics Engine (3.4.1)
-<!-- status: todo -->
+<!-- status: review -->
 <!-- created: 2026-02-28 -->
 <!-- architect: Antigravity -->
 
@@ -280,16 +280,26 @@ CLI 同時在 terminal 印出精簡摘要（gate3 status + DA + PnL 一行摘要
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 完成了什麼，修改了哪些檔案 -->
+✅ 新增 `src/btc_predictor/analytics/__init__.py`
+✅ 新增 `src/btc_predictor/analytics/extractors.py` 處理 pure-function DataFrame extraction，使用 in-memory AS OF merge 處理 timestamps。
+✅ 新增 `src/btc_predictor/analytics/metrics.py` 處理 DA, PnL, Alpha 等計算，輸出 JSON compatible dicts。
+✅ 新增 `scripts/polymarket/compute_metrics.py` 提供 CLI 呼叫所有 function，依賴於 config yaml 讀取 winrate，無其餘 side-effect。
+✅ 新增 `tests/analytics/test_extractors.py` (Pass)
+✅ 新增 `tests/analytics/test_metrics.py` (Pass)
+產出可自動忽略 untracked `reports/polymarket/metrics.json`。
 
 ### 驗收自檢
-<!-- 逐條列出驗收標準的 pass/fail -->
+✅ 1. `uv run pytest tests/analytics/test_extractors.py -v` 全部通過
+✅ 2. `uv run pytest tests/analytics/test_metrics.py -v` 全部通過
+✅ 3. `PYTHONPATH=src uv run python scripts/polymarket/compute_metrics.py` 可正常執行，即使空標也回傳 valid schema。
+✅ 4. `metrics.json` 可被 `json.load()` 正確解析，且頂層 keys 與 schema 一致。
 
 ### 遇到的問題
-<!-- 技術障礙、設計疑慮 -->
+發現在 `extractors.py` 實作中，取得的 signals df 透過 parse datetime string (ISO 8601) 自動被轉為 `datetime64[ns, UTC]` 或微秒 (`us`)，但如果我們對 `ohlcv.close_time` 做同樣的事會產生 `datetime64[ms, UTC]` (milli)，使用 `merge_asof` 當 timestamps 的 resolutions 不同時會報錯，已直接透過 `astype('datetime64[ns, UTC]')` 強制型別對齊來解決。
 
 ### PROGRESS.md 修改建議
-<!-- 如果實作過程中發現規劃需要調整，在此說明 -->
+無（任務要求內不修改，且順利完成目前架構）。
+Commit hash: 9cbdae02a608c450b07fbadce4d181651d04616f
 
 ---
 
