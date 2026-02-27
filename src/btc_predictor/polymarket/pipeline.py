@@ -30,10 +30,12 @@ class PolymarketLivePipeline:
         strategies: List[BaseStrategy],
         store: DataStore,
         tracker: PolymarketTracker,
+        bot: Any = None,
     ) -> None:
         self.strategies = strategies
         self.store = store
         self.tracker = tracker
+        self.bot = bot
         self.trigger_count: int = 0
         self._feed: Any = None
         
@@ -180,6 +182,8 @@ class PolymarketLivePipeline:
                     self.store.save_polymarket_execution_context(signal, trade, order)
                     if should_bet and trade and order:
                         logger.info(f"PolymarketLivePipeline: Placed SimulatedTrade {trade.id} and PolymarketOrder {order.order_id} for {strategy.name} ({timeframe}m)")
+                        if self.bot:
+                            await self.bot.send_signal(trade)
 
                 except Exception as e:
                     logger.error(f"PolymarketLivePipeline: DB Transaction error: {e}", exc_info=True)

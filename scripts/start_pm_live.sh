@@ -21,7 +21,7 @@ fi
 
 echo "🚀 開始在後台執行 Polymarket run_live.py..."
 # 在後台執行，加上 nohup 防斷線
-nohup python scripts/run_live.py > "$LOG_FILE" 2>&1 &
+nohup env PYTHONPATH=src uv run python scripts/run_live.py > "$LOG_FILE" 2>&1 &
 PID=$!
 
 echo "✅ 執行成功！"

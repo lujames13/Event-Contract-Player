@@ -16,6 +16,7 @@ from btc_predictor.strategies.registry import StrategyRegistry
 from btc_predictor.polymarket.gamma_client import GammaClient
 from btc_predictor.polymarket.tracker import PolymarketTracker
 from btc_predictor.polymarket.pipeline import PolymarketLivePipeline
+from btc_predictor.discord_bot.bot import EventContractBot
 
 # Setup logging
 logging.basicConfig(
@@ -79,10 +80,28 @@ async def main() -> None:
     gamma_client = GammaClient()
     tracker = PolymarketTracker(gamma_client=gamma_client, store=store)
 
+    # Setup Discord Bot
+    discord_token = os.getenv("DISCORD_TOKEN")
+    discord_channel_id = os.getenv("DISCORD_CHANNEL_ID")
+    bot = None
+    if discord_token and discord_channel_id:
+        guild_id = os.getenv("DISCORD_GUILD_ID")
+        bot = EventContractBot(
+            channel_id=int(discord_channel_id),
+            guild_id=int(guild_id) if guild_id else None,
+        )
+        bot.store = store
+        asyncio.create_task(bot.start(discord_token))
+        logger.info("Discord Bot task started.")
+
     # 4. Instantiate BinanceFeed and PolymarketLivePipeline
     # BinanceFeed is used to supply high-frequency OHLCV features
     feed = BinanceFeed(symbol="BTCUSDT", store=store)
-    pipeline = PolymarketLivePipeline(strategies=strategies, store=store, tracker=tracker)
+    pipeline = PolymarketLivePipeline(strategies=strategies, store=store, tracker=tracker, bot=bot)
+
+    # Expose pipeline on bot for /predict, /stats, /health, /models
+    if bot:
+        bot.pipeline = pipeline
 
     # 5. Wire feed -> pipeline
     feed.register_callback(pipeline.process_new_data)
@@ -110,6 +129,8 @@ async def main() -> None:
 
     # Cleanup
     await feed.stop()
+    if bot:
+        await bot.close()
     
     for task in tasks:
         task.cancel()

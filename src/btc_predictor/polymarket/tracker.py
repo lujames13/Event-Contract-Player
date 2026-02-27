@@ -2,8 +2,8 @@ import logging
 import asyncio
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
-from src.btc_predictor.polymarket.gamma_client import GammaClient
-from src.btc_predictor.infrastructure.store import DataStore
+from btc_predictor.polymarket.gamma_client import GammaClient
+from btc_predictor.infrastructure.store import DataStore
 
 logger = logging.getLogger(__name__)
 
