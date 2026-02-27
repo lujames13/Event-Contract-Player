@@ -260,11 +260,27 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 - [x] 3.3.2 Discord Bot 適配（/predict 顯示 alpha，/stats 適配 PM PnL）
 - [ ] 3.3.3 累積 200+ 筆 → 統計顯著性驗證
 
-### 3.4 模擬績效分析與模型改進（實盤前磨練）
-- [ ] 3.4.1 Paper trading 績效儀表板（每日/每週 PnL、DA、alpha 分佈、drawdown 曲線）
-- [ ] 3.4.2 模型迭代改進（pm_v2：特徵工程優化、超參數調整、新架構探索）
-- [ ] 3.4.3 多策略 Ensemble（如有多個有效模型，嘗試加權組合）
-- [ ] 3.4.4 信心度校準重新分析（累積足夠 signal 後重跑 reliability diagram）
+### 3.4 分析系統（四模組架構，實盤前磨練）
+
+> 設計原則：固定計算歸固定腳本，需要判斷的歸 agent skill。
+> 數據合約（metrics.json）是全系統 pivot point，上游計算、下游消費都通過它解耦。
+
+**模組 1+2：數據萃取 + 指標引擎**
+- [ ] 3.4.1 `analytics/extractors.py` — 從 SQLite 拉數據轉 DataFrame（純函數）
+- [ ] 3.4.1 `analytics/metrics.py` — DA、PnL、drawdown、alpha、校準等指標計算（純函數，DataFrame in → dict out）
+- [ ] 3.4.1 `scripts/polymarket/compute_metrics.py` — CLI 腳本，跑全部計算，輸出 `metrics.json`
+
+**模組 3：報告產出器**
+- [ ] 3.4.2 `scripts/polymarket/generate_report.py` — 讀 `metrics.json`，render 成 Markdown 報告
+
+**模組 4：Analyst Agent Skill**
+- [ ] 3.4.3 Diagnostic skill — 讀 `metrics.json`，回答「發生什麼」（drift、異常、regime）
+- [ ] 3.4.3 Recommendation skill — 基於診斷 + DECISIONS.md 約束，建議行動方案
+
+**模型改進（依分析結果驅動）**
+- [ ] 3.4.4 模型迭代改進（pm_v2：特徵工程優化、超參數調整、新架構探索）
+- [ ] 3.4.5 多策略 Ensemble（如有多個有效模型，嘗試加權組合）
+- [ ] 3.4.6 信心度校準重新分析（累積足夠 signal 後重跑 reliability diagram）
 
 ---
 
