@@ -266,12 +266,12 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 > 數據合約（metrics.json）是全系統 pivot point，上游計算、下游消費都通過它解耦。
 
 **模組 1+2：數據萃取 + 指標引擎**
-- [ ] 3.4.1 `analytics/extractors.py` — 從 SQLite 拉數據轉 DataFrame（純函數）
-- [ ] 3.4.1 `analytics/metrics.py` — DA、PnL、drawdown、alpha、校準等指標計算（純函數，DataFrame in → dict out）
-- [ ] 3.4.1 `scripts/polymarket/compute_metrics.py` — CLI 腳本，跑全部計算，輸出 `metrics.json`
+- [x] 3.4.1 `analytics/extractors.py` — 從 SQLite 拉數據轉 DataFrame（純函數）
+- [x] 3.4.1 `analytics/metrics.py` — DA、PnL、drawdown、alpha、校準等指標計算（純函數，DataFrame in → dict out）
+- [x] 3.4.1 `scripts/polymarket/compute_metrics.py` — CLI 腳本，跑全部計算，輸出 `metrics.json`
 
 **模組 3：報告產出器**
-- [ ] 3.4.2 `scripts/polymarket/generate_report.py` — 讀 `metrics.json`，render 成 Markdown 報告
+- [x] 3.4.2 `scripts/polymarket/generate_report.py` — 讀 `metrics.json`，render 成 Markdown 報告
 
 **模組 4：Analyst Agent Skill**
 - [ ] 3.4.3 Diagnostic skill — 讀 `metrics.json`，回答「發生什麼」（drift、異常、regime）
