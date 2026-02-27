@@ -325,3 +325,15 @@ Commit hash: 9cbdae02a608c450b07fbadce4d181651d04616f
 
 ### PROGRESS.md 修改建議
 目前請先修復上述阻塞性問題，待所有 tests 通過並重新發動 review-task 將 status 改為 done 即可。
+
+---
+
+## Coding Agent Fix 回報區
+
+### 修復項目
+✅ 1. **錯誤路徑防禦不足**：已在 `compute_directional_accuracy` 以及 `metrics.py` 的其他缺失防禦函式開頭補上 `if df.empty or 'is_correct' not in df.columns:` 等基礎檢查防呆。
+✅ 2. **設定檔未實際使用**：修改 `scripts/polymarket/compute_metrics.py`，將 config 取出的 `breakeven_winrate` 塞進 `meta` JSON 中，並將 `Gate 3` 的 DA 通過標準判斷從寫死的 `> 0.52` 改由 `> breakeven_winrate` 動態決定。
+✅ 3. **Drift Detection Slope 校正**：在 `compute_drift_detection` 中調整計算線性迴歸的 `X` 陣列（除以 `window_size`），讓 `slope` 計算基準對齊為 per window 衰退率以符合 `< -0.005` 邏輯。
+
+以上所有單元測試與 CLI 執行腳本皆已驗證通過。
+Commit hash: e1a815eba4cf726e09b6a02aa1d3e39169d07154

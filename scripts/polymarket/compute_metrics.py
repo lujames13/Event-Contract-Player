@@ -57,7 +57,8 @@ def main():
             "last_signal": None,
             "total_signals": 0,
             "settled_signals": 0
-        }
+        },
+        "breakeven_winrate": breakeven_winrate
     }
 
     # Base empty metrics structure
@@ -70,7 +71,7 @@ def main():
         "calibration": {},
         "drift": {},
         "gate3_status": {
-            "da_above_52pct": False,
+            "da_above_breakeven": False,
             "trades_above_200": False,
             "pnl_positive": False,
             "pipeline_72h_stable": None,
@@ -126,15 +127,15 @@ def main():
 
     # Gate 3 status
     da_val = da_metrics.get("overall", {}).get("da", 0.0)
-    da_above_52pct = da_val > 0.52
+    da_above_breakeven = da_val > breakeven_winrate
     trades_above_200 = pnl_metrics.get("total_trades", 0) >= 200
     pnl_positive = pnl_metrics.get("total_pnl", 0.0) > 0.0
     
-    metrics["gate3_status"]["da_above_52pct"] = da_above_52pct
+    metrics["gate3_status"]["da_above_breakeven"] = da_above_breakeven
     metrics["gate3_status"]["trades_above_200"] = trades_above_200
     metrics["gate3_status"]["pnl_positive"] = pnl_positive
     
-    if da_above_52pct and trades_above_200 and pnl_positive:
+    if da_above_breakeven and trades_above_200 and pnl_positive:
         metrics["gate3_status"]["overall"] = "PASSED (requires manual 72h check)"
 
     with open(args.output, "w") as f:

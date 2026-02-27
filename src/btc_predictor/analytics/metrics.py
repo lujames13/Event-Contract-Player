@@ -7,7 +7,7 @@ def compute_directional_accuracy(
     df: pd.DataFrame,
     groupby: Optional[List[str]] = None,
 ) -> dict:
-    if df.empty:
+    if df.empty or 'is_correct' not in df.columns:
         return {"overall": {"total": 0, "correct": 0, "da": 0.0, "ci_95": 0.0}}
         
     def _calc_stats(sub_df):
@@ -308,7 +308,7 @@ def compute_drift_detection(df: pd.DataFrame, window_size: int = 50) -> dict:
     rolling_da_out = [{"window_end_idx": int(i+window_size), "da": float(da)} for i, da in enumerate(rolling_da)]
         
     if len(rolling_da) > 1:
-        X = np.arange(len(rolling_da)).reshape(-1, 1)
+        X = np.arange(len(rolling_da)).reshape(-1, 1) / window_size
         mdl = LinearRegression().fit(X, rolling_da)
         slope = float(mdl.coef_[0])
     else:
