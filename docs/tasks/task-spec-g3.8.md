@@ -1,5 +1,5 @@
 # Task Spec G3.8 — Analytics 模組 1+2：Data Extraction + Metrics Engine (3.4.1)
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-02-28 -->
 <!-- architect: Antigravity -->
 
@@ -337,3 +337,26 @@ Commit hash: 9cbdae02a608c450b07fbadce4d181651d04616f
 
 以上所有單元測試與 CLI 執行腳本皆已驗證通過。
 Commit hash: e1a815eba4cf726e09b6a02aa1d3e39169d07154
+
+---
+
+## Review Agent 回報區 (Fix Validation)
+
+### 審核結果：PASS
+
+### 驗收標準檢查
+✅ 1. `uv run pytest tests/analytics/test_extractors.py -v` 全部通過
+✅ 2. `uv run pytest tests/analytics/test_metrics.py -v` 全部通過
+✅ 3. `PYTHONPATH=src uv run python scripts/polymarket/compute_metrics.py` 可正常執行
+✅ 4. `metrics.json` 頂層 schema 與要求一致（`breakeven_winrate` 動態替換判斷邏輯正確）
+
+### 修改範圍檢查
+✅ 修復程式碼完全針對前次發現之問題（missing column checks, slope 計算修正, JSON schema key 替換）進行更新，並無多餘變更。
+
+### 擴展測試 (Fix Validation)
+- 新增 `test_missing_is_correct_defense` 確認 `compute_directional_accuracy` 處理 `is_correct` 缺漏時安然回傳 0 值。 (PASS)
+- 新增 `test_drift_detection_slope_per_window` 驗證線性衰減 slope 完全對齊 "per window" 單位。 (PASS)
+- 新增 `test_cli_breakeven_winrate_usage` 確認 CLI 正確產出 `da_above_breakeven` 判斷欄位。 (PASS)
+
+### 結論
+前次 review 發現的阻塞性問題已全數獲得妥善解決，實作符合預期，標示任務為 Done。
