@@ -260,14 +260,23 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 - [x] 3.3.2 Discord Bot 適配（/predict 顯示 alpha，/stats 適配 PM PnL）
 - [ ] 3.3.3 累積 200+ 筆 → 統計顯著性驗證
 
+### 3.4 模擬績效分析與模型改進（實盤前磨練）
+- [ ] 3.4.1 Paper trading 績效儀表板（每日/每週 PnL、DA、alpha 分佈、drawdown 曲線）
+- [ ] 3.4.2 模型迭代改進（pm_v2：特徵工程優化、超參數調整、新架構探索）
+- [ ] 3.4.3 多策略 Ensemble（如有多個有效模型，嘗試加權組合）
+- [ ] 3.4.4 信心度校準重新分析（累積足夠 signal 後重跑 reliability diagram）
+
 ---
 
 ## Gate 4: Polymarket Live Trading
 
-### 4.1 VPS 交易基礎設施
-- [ ] 4.1.1 GCP Tokyo VPS 部署 + Polygon wallet + USDC 入金
-- [ ] 4.1.2 CLOB API trading client（EIP-712 簽名）
-- [ ] 4.1.3 VPS ↔ 本地通訊機制
+> **G4.2 探索結論 (2026-02-27)：** Webshare Japan Proxy 完美穿越 geoblock，
+> 本地可直接與 Polymarket L2 API 互動。原定 GCP VPS 架構全部取消。
+
+### 4.1 交易基礎設施
+- [x] ~~4.1.1 GCP Tokyo VPS 部署 + Polygon wallet + USDC 入金~~ → **取消**（Proxy 方案取代）
+- [x] 4.1.2 CLOB API trading client（EIP-712 簽名 + Proxy Wallet 認證 + derive_api_key） → **完成** (G4.1 + G4.2)
+- [x] ~~4.1.3 VPS ↔ 本地通訊機制~~ → **取消**（本地直連，無需通訊機制）
 ### 4.2 Order Management
 - [ ] 4.2.1 Maker order placement + fill monitoring
 - [ ] 4.2.2 Position management + PnL settlement

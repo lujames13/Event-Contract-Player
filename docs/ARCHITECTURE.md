@@ -32,7 +32,7 @@
                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               Decision & Execution Layer                    │
-│  Alpha ≥ 閾值? → Maker order via CLOB API (GCP Tokyo VPS)  │
+│  Alpha ≥ 閾值? → Maker order via CLOB API (Webshare Proxy) │
 │  → SimulatedTrade / PolymarketOrder → SQLite                │
 │  Order lifecycle: place → monitor fill → settlement         │
 └──────────────┬──────────────────────┬───────────────────────┘
