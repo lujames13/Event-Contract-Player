@@ -208,7 +208,10 @@ marimo/_static/
 marimo/_lsp/
 # Project specific
 reports/*.json
+reports/*.md
 reports/binance/*.json
+reports/polymarket/
+nohup.out
 models/
 results/
 logs/
