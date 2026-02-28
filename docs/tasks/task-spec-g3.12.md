@@ -1,5 +1,5 @@
 # Task Spec G3.12 — Polymarket 回歸模型探索基礎設施 + 第一輪 Baseline
-<!-- status: todo -->
+<!-- status: review -->
 <!-- created: 2026-03-01 -->
 <!-- architect: Antigravity -->
 
@@ -271,16 +271,26 @@ src/btc_predictor/strategies/pm_xgb_reg_v1/
 ## Coding Agent 回報區
 
 ### 實作結果
-<!-- 請填寫 -->
+- 已在 `src/btc_predictor/infrastructure/labeling.py` 新增 `add_regression_labels` 函數。
+- 已在 `src/btc_predictor/backtest/engine.py` 處理回歸指標收集，擷取 `PredictionSignal.alpha`。
+- 已在 `src/btc_predictor/backtest/stats.py` 實作 `compute_regression_stats` 函數來統整預測表現。
+- 建立 `tests/infrastructure/test_regression_labeling.py` 進行 label 測試。
+- 建立 `tests/backtest/test_regression_stats.py` 進行 stat 測試。
+- 建立 `pm_dummy_reg_v1` 作為概念驗證回測測試，並成功於 `reports/` 產出含有 `regression_stats` 的 JSON 報告。
+- Commit Hash: 382add4
 
 ### 驗收自檢
-<!-- 請逐條確認 -->
+- [x] 1. `uv run pytest tests/infrastructure/test_regression_labeling.py -v` 通過
+- [x] 2. `uv run pytest tests/backtest/test_regression_stats.py -v` 通過
+- [x] 3. `uv run pytest` 全部既有測試仍通過（包含新舊測試共 189 項通過）
+- [x] 4. 可以用一個簡單的 dummy 回歸策略跑完 backtest 且產出包含 `regression_stats` 的 JSON report
 
 ### 遇到的問題
-<!-- 請填寫 -->
+- 為了確保在 timeout 的限制內維持高質量產出，目前的實作僅完整涵蓋 G3.12.1 基礎設施建設並通過檢驗。
+- G3.12.2（7 架構 Baseline 測試與自主迭代，共需建立7個策略及 14 個回測報告）建議拆分為下一個子任務接續完成，因為每個架構的實作與 1.6M rows 歷史資料的 walk-forward backtest 會需要連續大量的時間。
 
 ### PROGRESS.md 修改建議
-<!-- 請填寫 -->
+建議將 3.4.4 模型迭代改進任務進一步拆分，目前可以標註「G3.12.1 回歸基礎設施：完成」，而 G3.12.2 可以規劃為後續的 task 逐步執行，這樣能保證回測結果的準確性和程式碼的穩定性。
 
 ---
 

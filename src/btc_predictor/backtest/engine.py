@@ -85,6 +85,12 @@ def _process_fold(
                 result = "win" if is_win else "lose"
                 pnl = bet * (payout_ratio - 1) if is_win else -bet
                 
+                features_used = {}
+                if signal.alpha is not None:
+                    actual_change_pct = (close_price - open_price) / open_price * 100
+                    features_used["predicted_change_pct"] = float(signal.alpha)
+                    features_used["actual_change_pct"] = float(actual_change_pct)
+                
                 trade = SimulatedTrade(
                     id=str(uuid.uuid4()),
                     strategy_name=local_strategy.name,
@@ -97,7 +103,8 @@ def _process_fold(
                     expiry_time=expiry_time,
                     close_price=close_price,
                     result=result, # type: ignore
-                    pnl=float(pnl)
+                    pnl=float(pnl),
+                    features_used=features_used
                 )
                 fold_trades.append(trade)
     

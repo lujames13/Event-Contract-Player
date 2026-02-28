@@ -99,3 +99,37 @@ def calculate_single_label(
         return 1 if close_price >= open_price else 0
     else:
         return 1 if close_price > open_price else 0
+
+def add_regression_labels(
+    df: pd.DataFrame, 
+    timeframe_minutes: int
+) -> pd.DataFrame:
+    """
+    Add regression labels: future price change percentage.
+    
+    Label = (close[t + timeframe] - close[t]) / close[t] * 100
+    
+    Args:
+        df: OHLCV DataFrame with DatetimeIndex (1m frequency)
+        timeframe_minutes: prediction horizon in minutes
+    
+    Returns:
+        DataFrame with added 'price_change_pct' column.
+        Rows where future close is unavailable will have NaN.
+    """
+    if df.empty:
+        return df.copy()
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame index must be a pd.DatetimeIndex")
+        
+    df_labeled = df.copy()
+    
+    expiry_times = df.index + pd.Timedelta(minutes=timeframe_minutes)
+    
+    future_prices = df["close"].reindex(expiry_times)
+    future_prices.index = df.index
+    
+    df_labeled["price_change_pct"] = (future_prices - df_labeled["close"]) / df_labeled["close"] * 100
+    
+    return df_labeled

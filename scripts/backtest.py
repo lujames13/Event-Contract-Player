@@ -10,7 +10,7 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from btc_predictor.infrastructure.store import DataStore
 from btc_predictor.backtest.engine import run_backtest
-from btc_predictor.backtest.stats import calculate_backtest_stats
+from btc_predictor.backtest.stats import calculate_backtest_stats, compute_regression_stats
 # from btc_predictor.strategies.xgboost_v1.strategy import XGBoostDirectionStrategy (Removed)
 from btc_predictor.strategies.xgboost_v1.features import generate_features
 from btc_predictor.strategies.registry import StrategyRegistry
@@ -88,6 +88,9 @@ def main():
         
     # 4. Calculate Stats
     stats = calculate_backtest_stats(trades, test_days=args.test_days)
+    reg_stats = compute_regression_stats(trades)
+    if reg_stats:
+        stats["regression_stats"] = reg_stats
     
     # 5. Output Report
     print("\n" + "="*40)
