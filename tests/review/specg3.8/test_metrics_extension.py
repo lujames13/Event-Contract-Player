@@ -52,7 +52,9 @@ def test_cli_breakeven_winrate_usage(tmp_path):
     # Create empty DB
     db_path = tmp_path / "test.db"
     conn = sqlite3.connect(str(db_path))
-    conn.execute("CREATE TABLE prediction_signals (id INTEGER PRIMARY KEY)")
+    conn.execute("CREATE TABLE pm_orders (id INTEGER PRIMARY KEY, signal_id INTEGER)")
+    conn.execute("CREATE TABLE prediction_signals (id INTEGER PRIMARY KEY, timestamp TEXT, actual_direction TEXT, strategy_name TEXT, timeframe_minutes INTEGER, direction TEXT, confidence REAL, current_price REAL, expiry_time TEXT, close_price REAL, is_correct INTEGER, alpha REAL)")
+    conn.execute("CREATE TABLE simulated_trades (id INTEGER PRIMARY KEY, pnl REAL, placed_at TEXT, strategy TEXT, timeframe TEXT)")
     conn.commit()
     conn.close()
 
@@ -63,7 +65,7 @@ def test_cli_breakeven_winrate_usage(tmp_path):
         sys.executable, "-m", "scripts.polymarket.compute_metrics", 
         "--db-path", str(db_path),
         "-o", str(out_file)
-    ], env={"PYTHONPATH": "src"}, check=True)
+    ], env={"PYTHONPATH": "src", **__import__("os").environ}, check=True)
 
     with open(out_file, "r") as f:
         data = json.load(f)

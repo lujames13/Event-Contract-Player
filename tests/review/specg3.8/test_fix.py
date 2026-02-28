@@ -60,7 +60,7 @@ def test_cli_breakeven_winrate_usage(tmp_path):
     # wait the script doesn't allow --db-path arg? Let's check compute_metrics.py:
     # Ah, let's just run it as is, it might read real DB.
     # The real DB might be empty or have data. We just want to check the keys in JSON.
-    env = None
+    env = {"PYTHONPATH": "src", **__import__("os").environ}
     subprocess.run(cmd, env=env, check=True, cwd="/home/jl/code/Event-Contract-Player")
     
     with open(out_json, "r") as f:
