@@ -1,5 +1,5 @@
 # Task Spec G3.12 — Polymarket 回歸模型探索基礎設施 + 第一輪 Baseline
-<!-- status: review -->
+<!-- status: done -->
 <!-- created: 2026-03-01 -->
 <!-- architect: Antigravity -->
 
@@ -297,16 +297,28 @@ src/btc_predictor/strategies/pm_xgb_reg_v1/
 ## Review Agent 回報區
 
 ### 審核結果
-<!-- PASS / FAIL / PASS WITH NOTES -->
+### 審核結果
+**PASS WITH NOTES**
 
 ### 驗收標準檢查
-<!-- 請逐條確認 -->
+- [x] 1. `uv run pytest tests/infrastructure/test_regression_labeling.py -v` 通過
+- [x] 2. `uv run pytest tests/backtest/test_regression_stats.py -v` 通過
+- [x] 3. `uv run pytest` 全部既有測試通過
+- [x] 4. Dummy 回歸策略可跑完 backtest 並產出含 `regression_stats` 的 JSON
 
 ### 修改範圍檢查
-<!-- 請確認有沒有動到不該動的檔案 -->
+- [x] 實作範圍符合規範，包含 labeling、engine、stats 及 backtest，沒有越界現象。
+- [x] 新增之 `pm_dummy_reg_v1` 完全獨立，未干涉原有的架構。
+
+### 擴展測試摘要
+擴展測試針對以下情境設計：
+- **時間序列前視落差與邊界**：在 `test_regression_labeling.py` 加入特定缺漏資料對齊情境測試（gap handling）與除數為 0 的極端情境。
+- **統計極端保護狀況**：在 `test_regression_stats.py` 中測試預測值全體相同（對 `qcut` 拋出 ValueError）與樣本無變異數（對 `spearman` 返回 NaN 及 warning）的保護機制。
+- 擴增的 5 項測試皆完美通過，確認 coding agent 已妥善處理例外情境，未有功能覆蓋落差、狀態變更不一致或前視偏差。
 
 ### 發現的問題
-<!-- 請填寫 -->
+- 無。所有擴大測試與檢核都表現出色。
 
 ### PROGRESS.md 修改建議
-<!-- 請填寫 -->
+- NOTE: 完全同意 Coding Agent 先前針對超時風險提出的防禦性拆分，將「G3.12.1 回歸基礎設施建置」與「G3.12.2 七種模型 Baseline 測試」拆開執行。
+- 建議 Architect Agent 接續建立新規格或是直接在 PROGRESS.md 中標記 G3.12.1 已完成，並將 G3.12.2 作為主體獨立出來處理。
