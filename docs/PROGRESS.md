@@ -274,8 +274,8 @@ Gate 2.5 完成條件（全部 Study 完成後由架構師判定）：
 - [x] 3.4.2 `scripts/polymarket/generate_report.py` — 讀 `metrics.json`，render 成 Markdown 報告
 
 **模組 4：Analyst Agent Skill**
-- [ ] 3.4.3 Diagnostic skill — 讀 `metrics.json`，回答「發生什麼」（drift、異常、regime）
-- [ ] 3.4.3 Recommendation skill — 基於診斷 + DECISIONS.md 約束，建議行動方案
+- [x] 3.4.3 Diagnostic skill — 讀 `metrics.json`，回答「發生什麼」（drift、異常、regime）
+- [x] 3.4.3 Recommendation skill — 基於診斷 + DECISIONS.md 約束，建議行動方案
 
 **模型改進（依分析結果驅動）**
 - [ ] 3.4.4 模型迭代改進（pm_v2：特徵工程優化、超參數調整、新架構探索）
