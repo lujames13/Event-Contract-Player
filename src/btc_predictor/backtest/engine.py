@@ -59,7 +59,10 @@ def _process_fold(
         signal = local_strategy.predict(data_up_to_ts, timeframe_minutes)
         
         # 4. Risk check & Bet calculation
-        bet = calculate_bet(signal.confidence, timeframe_minutes)
+        if payout_ratio == 2.0:
+            bet = 10.0
+        else:
+            bet = calculate_bet(signal.confidence, timeframe_minutes)
         
         if bet > 0:
             # 5. Create trade record
@@ -163,7 +166,7 @@ def run_backtest(
     print(f"[{strategy.name}] Starting parallel walk-forward backtest ({len(folds)} folds, n_jobs={n_jobs})...")
     
     # 3. Parallelize over folds
-    results = Parallel(n_jobs=n_jobs, backend="threading")(
+    results = Parallel(n_jobs=n_jobs, backend="threading", verbose=10)(
         delayed(_process_fold)(
             f_start, f_end, train_days, ohlcv, strategy, timeframe_minutes, payout_ratio, settlement_condition
         ) for f_start, f_end in folds

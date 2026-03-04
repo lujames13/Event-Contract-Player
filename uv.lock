@@ -311,6 +311,7 @@ dependencies = [
     { name = "pytest-mock" },
     { name = "python-binance" },
     { name = "python-dotenv" },
+    { name = "pytorch-tabnet" },
     { name = "pyyaml" },
     { name = "shap" },
     { name = "ta-lib" },
@@ -338,6 +339,7 @@ requires-dist = [
     { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "python-binance", specifier = ">=1.0.34" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "pytorch-tabnet", specifier = ">=4.1.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "shap", specifier = ">=0.49.1" },
     { name = "ta-lib", specifier = ">=0.6.8" },
@@ -2344,6 +2346,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+]
+
+[[package]]
+name = "pytorch-tabnet"
+version = "4.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "torch" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/19/c7/bb93b92e8e123308737240a26aa0868e05e2549ea8ece533b45f37b284d5/pytorch_tabnet-4.1.0.tar.gz", hash = "sha256:18887b993a8bf86ec05a576b5cf93f09e08b778cd9f418c5b254b6566df673a5", size = 44925, upload-time = "2023-07-23T13:26:59.063Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/92/ed98b89b7cf5661656daa4cc88e578f712eb5eae41b8f46a56c1ece3a895/pytorch_tabnet-4.1.0-py3-none-any.whl", hash = "sha256:70e8c9803f68f7cb26930d4cdb88857d1d98c745e0daf99d0f870fc70698515f", size = 44481, upload-time = "2023-07-23T13:26:57.044Z" },
 ]
 
 [[package]]
